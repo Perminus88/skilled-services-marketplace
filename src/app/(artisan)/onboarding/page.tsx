@@ -1,66 +1,131 @@
 "use client";
 
-import { useState, type ReactNode, type ChangeEvent, type FormEvent } from "react";
+import { useState, useEffect, type ReactNode, type ChangeEvent, type FormEvent } from "react";
 import {
   User, Phone, Briefcase, Award, DollarSign,
   ChevronDown, FileText, AlertCircle, AlertTriangle,
-  CheckCircle2, Loader2, Tag,
+  CheckCircle2, Loader2, Tag, Mail, Lock, MapPin, RefreshCw,
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-type TradeSkill   = "Plumber" | "Electrician" | "House Cleaner" | "Gardener" | "other";
-type PricingMode  = "flat" | "custom_quote" | "both";
-type SubmitStatus = "idle" | "loading" | "success" | "error";
+/**
+ * pricingMode must be one of these three exact strings.
+ * Backend check: !["flat","custom_quote","both"].includes(value)
+ */
+type PricingMode    = "flat" | "custom_quote" | "both";
+type SubmitStatus   = "idle" | "loading" | "success" | "error";
+type LocationStatus = "idle" | "loading" | "success" | "error" | "denied";
 
-interface FormValues {
-  fullName:           string;
-  phone:              string;
-  tradeSkill:         TradeSkill | "";
-  customCategoryName: string;       // only sent when tradeSkill === "other"
-  yearsExperience:    string;
-  pricingMode:        PricingMode | "";
-  startingPrice:      string;
-  bio:                string;
+/**
+ * Internal form state.
+ * All fields are strings because every HTML <input> / <select> / <textarea>
+ * yields a string via onChange.  Numeric conversions happen only in
+ * buildPayload() — never in the state itself.
+ *
+ * Field names match the backend ArtisanRegistrationBody keys exactly:
+ *   fullName · phone · tradeSkill · customCategoryName
+ *   yearsExperience · pricingMode · startingPrice · bio
+ *
+ * email / password / confirmPassword are NOT sent to /api/register/artisan —
+ * they're used only for the Supabase Auth signUp() call, which happens
+ * before the artisan-profile POST.
+ *
+ * latitude / longitude are NOT part of this state — they come from the
+ * browser Geolocation API and live in their own `coords` state below,
+ * since they're captured automatically rather than typed in.
+ */
+interface FormState {
+  email:              string;   // → supabase.auth.signUp({ email })
+  password:           string;   // → supabase.auth.signUp({ password })
+  confirmPassword:    string;   // client-side check only, never sent anywhere
+  fullName:           string;   // → string in payload
+  phone:              string;   // → string in payload (stripped of spaces/dashes)
+  tradeSkill:         string;   // → string: "Plumber"|"Electrician"|"House Cleaner"|"Gardener"|"other"
+  customCategoryName: string;   // → string? in payload (only when tradeSkill === "other")
+  yearsExperience:    string;   // → parseInt(value, 10)  → number in payload
+  pricingMode:        string;   // → PricingMode ("flat"|"custom_quote"|"both")
+  startingPrice:      string;   // → parseFloat(value)    → number in payload
+  bio:                string;   // → string? in payload (omitted when empty)
+
+  // Manual location fallback — only validated/used when the browser
+  // Geolocation API fails, times out, or is denied. See useManualLocation
+  // state in the page component.
+  manualLatitude:  string;   // → parseFloat(value), range -90..90
+  manualLongitude: string;   // → parseFloat(value), range -180..180
 }
 
-type FormErrors = Partial<Record<keyof FormValues, string>>;
+type FormErrors = Partial<Record<keyof FormState, string>>;
 
+/**
+ * The exact shape POSTed to /api/register/artisan.
+ * Mirrors ArtisanRegistrationBody in route.ts field-for-field.
+ *
+ * The backend's validateBody() uses `typeof value !== "number"` for numeric
+ * fields, so yearsExperience and startingPrice MUST be JSON numbers — not
+ * numeric strings.  JSON.stringify(NaN) → "null", which also fails the check,
+ * so we validate before calling parseInt / parseFloat.
+ */
 interface ArtisanRegistrationPayload {
-  userId:              string;
+  userId:              string;   // real UUID from supabase.auth.signUp()
   fullName:            string;
   phone:               string;
-  tradeSkill:          TradeSkill;
-  customCategoryName?: string;      // present only when tradeSkill === "other"
-  yearsExperience:     number;
+  tradeSkill:          string;
+  customCategoryName?: string;   // key absent entirely when tradeSkill !== "other"
+  yearsExperience:     number;   // integer   — parseInt(string, 10)
   pricingMode:         PricingMode;
-  startingPrice:       number;
-  bio:                 string;
-  latitude:            number;
-  longitude:           number;
+  startingPrice:       number;   // float     — parseFloat(string)
+  bio?:                string;   // key absent entirely when empty
+  latitude:            number;   // real GPS coordinate, sent as JSON number
+  longitude:           number;   // real GPS coordinate, sent as JSON number
+}
+
+/** 201 success response shape from route.ts */
+interface ApiSuccessBody {
+  message:      string;
+  userId:       string;
+  categoryId:   number;
+  categoryName: string;   // resolved display name — custom or known
+}
+
+/** Error response shape from route.ts (400 / 404 / 422 / 500) */
+interface ApiErrorBody {
+  message?: string;
+  errors?:  string[];   // populated on 422 Validation Failed
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-const MOCK_USER_ID  = "00000000-0000-0000-0000-000000000000";
-const MOCK_LATITUDE  = -1.0467;
-const MOCK_LONGITUDE = 37.1500;
-const BIO_MAX_CHARS  = 300;
+const BIO_MAX_CHARS = 300;
 
-const TRADE_SKILLS: TradeSkill[] = ["Plumber", "Electrician", "House Cleaner", "Gardener"];
-// "other" is not in TRADE_SKILLS — it's rendered separately as the last <option>
+/**
+ * Known trade skills.
+ * Each string must match a `name` column value in the `categories` table
+ * exactly, because the backend does .eq("name", data.tradeSkill).
+ * "other" is NOT in this array — it has its own dedicated <option>.
+ */
+const KNOWN_TRADE_SKILLS = [
+  "Plumber",
+  "Electrician",
+  "House Cleaner",
+  "Gardener",
+] as const;
 
 const PRICING_MODES: { value: PricingMode; label: string; hint: string }[] = [
-  { value: "flat",         label: "Flat rate",      hint: "You charge a fixed price per job." },
-  { value: "custom_quote", label: "Custom quote",   hint: "You quote each job individually." },
-  { value: "both",         label: "Flat + quotes",  hint: "You offer both options depending on the job." },
+  { value: "flat",         label: "Flat rate",     hint: "You charge a fixed price per job." },
+  { value: "custom_quote", label: "Custom quote",  hint: "You quote each job individually." },
+  { value: "both",         label: "Flat + quotes", hint: "You offer both depending on the job." },
 ];
 
-const EMPTY_FORM: FormValues = {
+const EMPTY_FORM: FormState = {
+  email:              "",
+  password:           "",
+  confirmPassword:    "",
   fullName:           "",
   phone:              "",
   tradeSkill:         "",
@@ -69,32 +134,64 @@ const EMPTY_FORM: FormValues = {
   pricingMode:        "",
   startingPrice:      "",
   bio:                "",
+  manualLatitude:     "",
+  manualLongitude:    "",
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Validation
+// Mirrors the backend validateBody() checks so the user sees clear messages
+// before a request is ever sent, rather than getting a 422 back.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function validate(v: FormValues): FormErrors {
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validate(v: FormState, useManualLocation: boolean): FormErrors {
   const errors: FormErrors = {};
 
+  // email — required, basic shape check (Supabase does the real validation)
+  if (!v.email.trim()) {
+    errors.email = "Email is required.";
+  } else if (!EMAIL_RE.test(v.email.trim())) {
+    errors.email = "Enter a valid email address.";
+  }
+
+  // password — Supabase's default minimum is 6 chars; we ask for 8 to be safe
+  if (!v.password) {
+    errors.password = "Password is required.";
+  } else if (v.password.length < 8) {
+    errors.password = "Password must be at least 8 characters.";
+  }
+
+  // confirmPassword — client-side only, never sent to the backend
+  if (!v.confirmPassword) {
+    errors.confirmPassword = "Please confirm your password.";
+  } else if (v.confirmPassword !== v.password) {
+    errors.confirmPassword = "Passwords do not match.";
+  }
+
+  // fullName — backend: trim().length < 2
   if (!v.fullName.trim()) {
     errors.fullName = "Full name is required.";
   } else if (v.fullName.trim().length < 2) {
     errors.fullName = "Name must be at least 2 characters.";
   }
 
-  const phone = v.phone.replace(/[\s\-()]/g, "");
-  if (!phone) {
+  // phone — backend: typeof !== "string" || falsy
+  // Extra: Kenyan format check (stricter, but any valid Kenyan number passes)
+  const cleanPhone = v.phone.replace(/[\s\-()]/g, "");
+  if (!cleanPhone) {
     errors.phone = "M-Pesa phone number is required.";
-  } else if (!/^(?:07|01|\+?2547|\+?2541)\d{7,8}$/.test(phone)) {
+  } else if (!/^(?:07|01|\+?2547|\+?2541)\d{7,8}$/.test(cleanPhone)) {
     errors.phone = "Enter a valid Kenyan number — e.g. 0712 345 678.";
   }
 
+  // tradeSkill — backend: typeof !== "string" || falsy
   if (!v.tradeSkill) {
     errors.tradeSkill = "Please select your primary trade.";
   }
 
+  // customCategoryName — backend: required + trim().length >= 2 when tradeSkill === "other"
   if (v.tradeSkill === "other") {
     if (!v.customCategoryName.trim()) {
       errors.customCategoryName = "Please specify your trade.";
@@ -103,25 +200,54 @@ function validate(v: FormValues): FormErrors {
     }
   }
 
-  if (!v.yearsExperience) {
+  // yearsExperience — backend: typeof !== "number" || < 0 || > 60
+  // We validate the string value here so parseInt never receives garbage
+  if (!v.yearsExperience.trim()) {
     errors.yearsExperience = "Years of experience is required.";
   } else {
-    const yrs = Number(v.yearsExperience);
-    if (!Number.isInteger(yrs) || yrs < 0 || yrs > 60) {
+    const yrs = parseInt(v.yearsExperience, 10);
+    if (isNaN(yrs)) {
+      errors.yearsExperience = "Enter a whole number.";
+    } else if (yrs < 0 || yrs > 60) {
       errors.yearsExperience = "Enter a whole number between 0 and 60.";
     }
   }
 
+  // pricingMode — backend: !["flat","custom_quote","both"].includes(value)
   if (!v.pricingMode) {
     errors.pricingMode = "Please select how you price your work.";
   }
 
-  if (!v.startingPrice) {
+  // startingPrice — backend: typeof !== "number" || <= 0
+  // We validate the string value here so parseFloat never receives garbage
+  if (!v.startingPrice.trim()) {
     errors.startingPrice = "Starting price is required.";
   } else {
-    const price = Number(v.startingPrice);
-    if (isNaN(price) || price <= 0) {
-      errors.startingPrice = "Enter a price greater than KES 0.";
+    const price = parseFloat(v.startingPrice);
+    if (isNaN(price) || !isFinite(price) || price <= 0) {
+      errors.startingPrice = "Enter a valid price greater than KES 0.";
+    }
+  }
+
+  // manualLatitude / manualLongitude — only required when the browser
+  // Geolocation API has failed and the artisan is entering location by hand.
+  if (useManualLocation) {
+    if (!v.manualLatitude.trim()) {
+      errors.manualLatitude = "Latitude is required.";
+    } else {
+      const lat = parseFloat(v.manualLatitude);
+      if (isNaN(lat) || lat < -90 || lat > 90) {
+        errors.manualLatitude = "Enter a valid latitude between -90 and 90.";
+      }
+    }
+
+    if (!v.manualLongitude.trim()) {
+      errors.manualLongitude = "Longitude is required.";
+    } else {
+      const lng = parseFloat(v.manualLongitude);
+      if (isNaN(lng) || lng < -180 || lng > 180) {
+        errors.manualLongitude = "Enter a valid longitude between -180 and 180.";
+      }
     }
   }
 
@@ -129,10 +255,62 @@ function validate(v: FormValues): FormErrors {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Payload builder
+//
+// Converts FormState (all strings) into ArtisanRegistrationPayload with
+// the exact types the backend validator expects.  Only called after validate()
+// has confirmed every field is safe to convert, after signUp() has returned a
+// real userId, and after the browser has returned a real GPS fix.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function buildPayload(
+  v:         FormState,
+  userId:    string,
+  latitude:  number,
+  longitude: number
+): ArtisanRegistrationPayload {
+  const isCustomTrade = v.tradeSkill === "other";
+
+  const payload: ArtisanRegistrationPayload = {
+    // ── Identity ──────────────────────────────────────────────────────────────
+    userId,                                            // real UUID from signUp()
+    fullName: v.fullName.trim(),                      // string
+    phone:    v.phone.replace(/[\s\-()]/g, ""),       // string, digits only
+
+    // ── Trade ─────────────────────────────────────────────────────────────────
+    tradeSkill: v.tradeSkill,                         // string (known name or "other")
+
+    // customCategoryName is spread in only when needed so the key is
+    // entirely absent (not undefined / null) for standard trades.
+    ...(isCustomTrade && {
+      customCategoryName: v.customCategoryName.trim(),  // string
+    }),
+
+    // ── Business ──────────────────────────────────────────────────────────────
+    // parseInt / parseFloat produce real JSON numbers, satisfying the backend's
+    // `typeof !== "number"` guards.  validate() guarantees these won't be NaN.
+    yearsExperience: parseInt(v.yearsExperience, 10),   // number (integer)
+    pricingMode:     v.pricingMode as PricingMode,       // "flat"|"custom_quote"|"both"
+    startingPrice:   parseFloat(v.startingPrice),        // number (float)
+
+    // bio is optional on the backend (bio?: string).
+    // Omit the key entirely when empty rather than sending "".
+    ...(v.bio.trim() && { bio: v.bio.trim() }),          // string | omitted
+
+    // ── Location ──────────────────────────────────────────────────────────────
+    // Real coordinates from navigator.geolocation, captured before submit.
+    latitude,
+    longitude,
+  };
+
+  return payload;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Sub-components
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Section rule with label — the "work order" signature of this form */
+/** Section rule with label — the "work order" visual signature of this form */
 function SectionRule({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3 mt-7 mb-5">
@@ -144,7 +322,7 @@ function SectionRule({ label }: { label: string }) {
   );
 }
 
-/** Consistent label + error wrapper */
+/** Label + hint + inline error wrapper used by every field */
 function Field({
   label,
   error,
@@ -152,23 +330,22 @@ function Field({
   children,
   optional,
 }: {
-  label:    string;
-  error?:   string;
-  hint?:    string;
-  children: ReactNode;
+  label:     string;
+  error?:    string;
+  hint?:     string;
+  children:  ReactNode;
   optional?: boolean;
 }) {
   return (
     <div>
       <div className="flex items-baseline justify-between mb-1.5">
-        <label className="block text-sm font-medium text-slate-700">
-          {label}
-        </label>
+        <label className="block text-sm font-medium text-slate-700">{label}</label>
         {optional && (
           <span className="text-[11px] text-slate-400">Optional</span>
         )}
       </div>
       {children}
+      {/* Show hint only when there's no error so they don't compete */}
       {hint && !error && (
         <p className="mt-1.5 text-[11px] text-slate-400 leading-snug">{hint}</p>
       )}
@@ -182,8 +359,8 @@ function Field({
   );
 }
 
-/** Shared class strings for input/select/textarea */
-function inputCls(hasError: boolean) {
+/** Shared Tailwind border/focus classes for all interactive inputs */
+function inputCls(hasError: boolean): string {
   return [
     "w-full rounded-lg border text-sm text-slate-900 bg-white",
     "placeholder-slate-400 transition-colors",
@@ -194,29 +371,23 @@ function inputCls(hasError: boolean) {
   ].join(" ");
 }
 
-/** Text / tel / number input with a leading icon */
+/** Text / tel / number <input> with a leading icon */
 function IconInput({
   icon,
   error,
   ...props
-}: {
-  icon:   ReactNode;
-  error?: string;
-} & React.InputHTMLAttributes<HTMLInputElement>) {
+}: { icon: ReactNode; error?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div className="relative">
       <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
         {icon}
       </div>
-      <input
-        {...props}
-        className={`${inputCls(!!error)} pl-9 pr-3 py-2.5`}
-      />
+      <input {...props} className={`${inputCls(!!error)} pl-9 pr-3 py-2.5`} />
     </div>
   );
 }
 
-/** Select with leading icon + custom chevron */
+/** <select> with a leading icon and a custom chevron */
 function IconSelect({
   icon,
   error,
@@ -233,10 +404,7 @@ function IconSelect({
       <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
         {icon}
       </div>
-      <select
-        {...props}
-        className={`${inputCls(!!error)} appearance-none pl-9 pr-8 py-2.5`}
-      >
+      <select {...props} className={`${inputCls(!!error)} appearance-none pl-9 pr-8 py-2.5`}>
         <option value="">{placeholder}</option>
         {children}
       </select>
@@ -247,21 +415,119 @@ function IconSelect({
   );
 }
 
+/**
+ * Location status card — shows GPS capture state (loading / success / error)
+ * with a retry button. Placed near the top of the form since latitude and
+ * longitude are required before submission can succeed.
+ */
+function LocationStatusCard({
+  status,
+  errorMessage,
+  onRetry,
+  onUseManual,
+}: {
+  status:       LocationStatus;
+  errorMessage: string;
+  onRetry:      () => void;
+  onUseManual:  () => void;
+}) {
+  if (status === "loading") {
+    return (
+      <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+        <Loader2 size={16} className="animate-spin text-slate-400 flex-shrink-0" />
+        <p className="text-sm text-slate-600">Getting your location…</p>
+      </div>
+    );
+  }
+
+  if (status === "success") {
+    return (
+      <div className="flex items-center gap-3 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3">
+        <MapPin size={16} className="text-teal-600 flex-shrink-0" />
+        <p className="text-sm text-teal-700">Location captured.</p>
+      </div>
+    );
+  }
+
+  if (status === "denied" || status === "error") {
+    return (
+      <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+        <AlertTriangle size={16} className="mt-0.5 text-amber-500 flex-shrink-0" />
+        <div className="flex-1">
+          <p className="text-sm text-amber-700">{errorMessage}</p>
+          <div className="mt-2 flex items-center gap-4">
+            <button
+              type="button"
+              onClick={onRetry}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 hover:text-amber-800"
+            >
+              <RefreshCw size={12} />
+              Try again
+            </button>
+            <button
+              type="button"
+              onClick={onUseManual}
+              className="text-xs font-semibold text-amber-700 underline hover:text-amber-800"
+            >
+              Enter location manually
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // status === "idle" — nothing rendered yet; the effect kicks off immediately
+  // on mount, so this state is only visible for a split second.
+  return null;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Success card
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SuccessCard({ name }: { name: string }) {
+function SuccessCard({
+  firstName,
+  resolvedCategoryName,
+  userId,
+  email,
+}: {
+  firstName:            string;
+  resolvedCategoryName: string;
+  userId:               string;
+  email:                string;
+}) {
   return (
     <div className="py-4 text-center">
       <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-teal-50 ring-8 ring-teal-50/60">
         <CheckCircle2 size={34} className="text-teal-600" />
       </div>
+
       <h2 className="text-xl font-bold text-slate-900">Application submitted</h2>
       <p className="mx-auto mt-2 max-w-xs text-sm text-slate-500 leading-relaxed">
-        Thanks, <span className="font-semibold text-slate-700">{name}</span>. We'll verify your
-        details within 24 hours and SMS you on your M-Pesa number when you're approved.
+        Thanks,{" "}
+        <span className="font-semibold text-slate-700">{firstName}</span>.
+        {" "}We&apos;ll verify your details within 24 hours and SMS you when you&apos;re approved.
       </p>
+
+      {/* Email confirmation notice — required before they can log in */}
+      <div className="mx-auto mt-4 max-w-xs rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-left">
+        <p className="flex items-start gap-2 text-xs text-teal-700 leading-relaxed">
+          <Mail size={14} className="mt-0.5 flex-shrink-0" />
+          <span>
+            Check <span className="font-semibold">{email}</span> for a confirmation
+            link — you&apos;ll need to confirm your account before you can log in.
+          </span>
+        </p>
+      </div>
+
+      {/* Display the resolved category name returned by the backend */}
+      {resolvedCategoryName && (
+        <div className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1.5">
+          <Briefcase size={13} className="text-teal-600" />
+          <span className="text-xs font-semibold text-teal-700">{resolvedCategoryName}</span>
+        </div>
+      )}
 
       {/* What happens next */}
       <ol className="mx-auto mt-6 max-w-xs space-y-2 text-left text-[13px] text-slate-600">
@@ -279,7 +545,7 @@ function SuccessCard({ name }: { name: string }) {
         ))}
       </ol>
 
-      {/* Reference */}
+      {/* Reference number — the real Supabase Auth user id */}
       <div className="mx-auto mt-6 max-w-xs rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
           Reference number
@@ -288,7 +554,7 @@ function SuccessCard({ name }: { name: string }) {
           className="mt-1 break-all text-xs font-semibold text-slate-700"
           style={{ fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)" }}
         >
-          {MOCK_USER_ID}
+          {userId}
         </p>
       </div>
     </div>
@@ -300,58 +566,211 @@ function SuccessCard({ name }: { name: string }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ArtisanOnboardingPage() {
-  const [values,      setValues]      = useState<FormValues>(EMPTY_FORM);
-  const [errors,      setErrors]      = useState<FormErrors>({});
-  const [status,      setStatus]      = useState<SubmitStatus>("idle");
-  const [apiError,    setApiError]    = useState<string>("");
+  const [values,               setValues]              = useState<FormState>(EMPTY_FORM);
+  const [fieldErrors,          setFieldErrors]         = useState<FormErrors>({});
+  const [status,               setStatus]              = useState<SubmitStatus>("idle");
+  const [apiErrorMessage,      setApiErrorMessage]     = useState<string>("");
+  const [resolvedCategoryName, setResolvedCategoryName] = useState<string>("");
+  const [registeredUserId,     setRegisteredUserId]    = useState<string>("");
 
-  // Generic change handler — keeps all fields in one state object
+  // ── Geolocation state ────────────────────────────────────────────────────
+  const [coords,            setCoords]            = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationStatus,    setLocationStatus]    = useState<LocationStatus>("idle");
+  const [locationError,     setLocationError]     = useState<string>("");
+  // True once the artisan clicks "Enter location manually" after the browser
+  // Geolocation API fails/times out/is denied — swaps the status card for
+  // two plain number inputs instead of retrying the browser API.
+  const [useManualLocation, setUseManualLocation] = useState<boolean>(false);
+
+  // Request the browser's location as soon as the form loads, so it's ready
+  // by the time the artisan finishes filling in the rest of the fields.
+  function requestLocation() {
+    if (!("geolocation" in navigator)) {
+      setLocationStatus("error");
+      setLocationError("Your browser doesn't support location services. Please try a different browser.");
+      return;
+    }
+
+    setLocationStatus("loading");
+    setLocationError("");
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCoords({
+          latitude:  position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        setLocationStatus("success");
+      },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocationStatus("denied");
+          setLocationError("Location access was denied. We need this to match you with nearby jobs — please allow it and try again.");
+        } else if (err.code === err.TIMEOUT) {
+          setLocationStatus("error");
+          setLocationError("Getting your location took too long. Please try again.");
+        } else {
+          setLocationStatus("error");
+          setLocationError("We couldn't get your location. Please try again.");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    );
+  }
+
+  useEffect(() => {
+    requestLocation();
+    // Only run once on mount — requestLocation is stable enough for this use.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Generic change handler ─────────────────────────────────────────────────
+  // Handles all text / tel / number / textarea / select fields except the
+  // tradeSkill dropdown, which needs extra cleanup logic (see below).
   function handleChange(
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) {
     const { name, value } = e.target;
     setValues((prev) => ({ ...prev, [name]: value }));
-    // Clear the error for this field as the user types
-    if (errors[name as keyof FormValues]) {
-      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    // Eagerly clear this field's error as the user edits it
+    if (fieldErrors[name as keyof FormState]) {
+      setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   }
 
+  // ── tradeSkill dropdown handler ─────────────────────────────────────────────
+  // Separate from handleChange because switching away from "other" must also
+  // clear customCategoryName state and its error — otherwise stale text can
+  // still exist in state and sneak into buildPayload() via the spread.
+  function handleTradeSkillChange(e: ChangeEvent<HTMLSelectElement>) {
+    const selected = e.target.value;
+    const leavingOther = selected !== "other";
+
+    setValues((prev) => ({
+      ...prev,
+      tradeSkill: selected,
+      // Wipe the custom name whenever "other" is no longer selected
+      ...(leavingOther && { customCategoryName: "" }),
+    }));
+
+    setFieldErrors((prev) => ({
+      ...prev,
+      tradeSkill: undefined,
+      ...(leavingOther && { customCategoryName: undefined }),
+    }));
+  }
+
+  // ── Form submission ────────────────────────────────────────────────────────
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    const validationErrors = validate(values);
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      // Scroll the first error into view
-      const firstErrorKey = Object.keys(validationErrors)[0];
-      document.querySelector<HTMLElement>(`[name="${firstErrorKey}"]`)?.focus();
+    // Step 1 — client-side validation (mirrors backend validateBody, plus
+    // email/password/confirmPassword checks for the signup step)
+    const errors = validate(values, useManualLocation);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      // Move keyboard focus to the first invalid field for accessibility
+      const firstKey = Object.keys(errors)[0] as keyof FormState;
+      document.querySelector<HTMLElement>(`[name="${firstKey}"]`)?.focus();
       return;
     }
 
-    setErrors({});
-    setApiError("");
+    // Step 1b — location must be resolved before we can submit at all, since
+    // the backend requires real latitude/longitude numbers. Either the
+    // browser Geolocation API succeeded (coords set), or the artisan is
+    // using the manual fallback (already validated above by validate()).
+    let finalLatitude:  number;
+    let finalLongitude: number;
+
+    if (useManualLocation) {
+      finalLatitude  = parseFloat(values.manualLatitude);
+      finalLongitude = parseFloat(values.manualLongitude);
+    } else if (coords) {
+      finalLatitude  = coords.latitude;
+      finalLongitude = coords.longitude;
+    } else {
+      setApiErrorMessage(
+        locationStatus === "denied" || locationStatus === "error"
+          ? "We still need your location to continue. Please allow location access, or enter it manually below."
+          : "Still getting your location — please wait a moment and try again."
+      );
+      setStatus("error");
+      return;
+    }
+
+    setFieldErrors({});
+    setApiErrorMessage("");
     setStatus("loading");
 
-    const isCustomTrade = values.tradeSkill === "other";
+    // Step 1c — check phone availability BEFORE creating any auth account.
+    // Doing this after signUp() (the old order) meant a rejected phone left
+    // behind a real, orphaned auth.users row tied to the artisan's email —
+    // and since signUp() rejects an already-registered email, they'd have
+    // no way to retry with the same email afterward. Checking first avoids
+    // creating that account at all when we already know it'll fail.
+    const cleanPhone = values.phone.replace(/[\s\-()]/g, "");
 
-    const payload: ArtisanRegistrationPayload = {
-      userId:          MOCK_USER_ID,
-      fullName:        values.fullName.trim(),
-      phone:           values.phone.replace(/[\s\-()]/g, ""),
-      tradeSkill:      values.tradeSkill as TradeSkill,
-      // Only include customCategoryName when the artisan chose "Other"
-      ...(isCustomTrade && {
-        customCategoryName: values.customCategoryName.trim(),
-      }),
-      yearsExperience: parseInt(values.yearsExperience, 10),
-      pricingMode:     values.pricingMode as PricingMode,
-      startingPrice:   parseFloat(values.startingPrice),
-      bio:             values.bio.trim(),
-      latitude:        MOCK_LATITUDE,
-      longitude:       MOCK_LONGITUDE,
-    };
+    try {
+      const phoneCheckRes = await fetch("/api/register/check-phone", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ phone: cleanPhone }),
+      });
 
+      const phoneCheckJson = await phoneCheckRes.json().catch(() => ({}));
+
+      if (!phoneCheckRes.ok) {
+        setApiErrorMessage(phoneCheckJson.message ?? "Failed to verify phone number. Please try again.");
+        setStatus("error");
+        return;
+      }
+
+      if (!phoneCheckJson.available) {
+        setApiErrorMessage("This phone number is already registered to another account.");
+        setStatus("error");
+        return;
+      }
+    } catch {
+      setApiErrorMessage("Failed to verify phone number. Please check your connection and try again.");
+      setStatus("error");
+      return;
+    }
+
+    // Step 2 — create the actual Supabase Auth account.
+    // auth.users gets a real row here, which fires the on_auth_user_created
+    // trigger and creates the matching public.users row before we ever touch
+    // artisan_profiles. The phone availability check above already ran, so
+    // this account won't immediately become orphaned by that specific failure.
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email:    values.email.trim(),
+      password: values.password,
+      options: {
+        // Without this, Supabase falls back to the project's "Site URL"
+        // setting, which may not point at a real page in this app.
+        emailRedirectTo: `${window.location.origin}/onboarding/confirmed`,
+      },
+    });
+
+    if (signUpError) {
+      // Common case: "User already registered" — surface it plainly rather
+      // than a generic failure message.
+      setApiErrorMessage(signUpError.message);
+      setStatus("error");
+      return;
+    }
+
+    const userId = signUpData.user?.id;
+    if (!userId) {
+      setApiErrorMessage("Account creation didn't return a user ID. Please try again.");
+      setStatus("error");
+      return;
+    }
+
+    // Step 3 — build payload with proper JSON types, using the real
+    // Supabase-issued userId and the real GPS coordinates.
+    const payload = buildPayload(values, userId, finalLatitude, finalLongitude);
+
+    // Step 4 — POST to /api/register/artisan
     try {
       const res = await fetch("/api/register/artisan", {
         method:  "POST",
@@ -360,34 +779,43 @@ export default function ArtisanOnboardingPage() {
       });
 
       if (!res.ok) {
-        // Try to surface a message from the server, otherwise use HTTP status
-        const json = await res.json().catch(() => ({})) as { message?: string };
-        throw new Error(json.message ?? `Server returned ${res.status} — please try again.`);
+        // 422 responses include an `errors` string array with individual messages
+        const json = await res.json().catch(() => ({})) as ApiErrorBody;
+        const detail =
+          json.errors && json.errors.length > 0
+            ? json.errors.join(" • ")
+            : (json.message ?? `Unexpected error — server returned ${res.status}.`);
+        throw new Error(detail);
       }
 
+      // Step 5 — read the 201 body to get the backend-resolved category name
+      // (important for custom categories — the backend trims and saves it)
+      const result = await res.json() as ApiSuccessBody;
+      setResolvedCategoryName(result.categoryName ?? values.tradeSkill);
+      setRegisteredUserId(userId);
       setStatus("success");
+
     } catch (err) {
-      const message =
+      setApiErrorMessage(
         err instanceof Error
           ? err.message
-          : "An unexpected error occurred. Please try again.";
-      setApiError(message);
+          : "An unexpected error occurred. Please try again."
+      );
       setStatus("error");
     }
   }
 
-  const pricingHint = values.pricingMode
-    ? PRICING_MODES.find((m) => m.value === values.pricingMode)?.hint
-    : undefined;
+  // ── Derived values ─────────────────────────────────────────────────────────
+  const isCustomTrade = values.tradeSkill === "other";
+  const pricingHint   = PRICING_MODES.find((m) => m.value === values.pricingMode)?.hint;
+  const bioLength     = values.bio.length;
 
-  const bioLength = values.bio.length;
-
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10 sm:py-14">
       <div className="mx-auto w-full max-w-lg">
 
-        {/* Card */}
+        {/* ── Card ─────────────────────────────────────────────────────────── */}
         <div
           className="overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-slate-900/5"
           style={{ borderTop: "4px solid #0D9488" /* teal-600 */ }}
@@ -395,19 +823,15 @@ export default function ArtisanOnboardingPage() {
 
           {/* Card header */}
           <div className="px-6 pt-7 pb-2 sm:px-8">
-            {/* Brand */}
             <div className="mb-5 flex items-center gap-2.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-[#F5B700] font-black text-base leading-none select-none">
                 G
               </div>
-              <span className="text-sm font-bold text-slate-900 tracking-tight">
-                Skilled Services Marketplace
-              </span>
+              <span className="text-sm font-bold text-slate-900 tracking-tight">Skilled services marketplace</span>
               <span className="ml-auto rounded-sm bg-teal-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-teal-700">
                 New Application
               </span>
             </div>
-
             <h1 className="text-2xl font-bold text-slate-900 leading-tight">
               Create your artisan profile
             </h1>
@@ -416,38 +840,163 @@ export default function ArtisanOnboardingPage() {
             </p>
           </div>
 
-          {/* Divider */}
           <div className="mx-6 mt-5 h-px bg-slate-100 sm:mx-8" />
 
-          {/* Form body */}
+          {/* Card body */}
           <div className="px-6 pb-8 sm:px-8">
 
-            {/* ── API error alert ────────────────────────────────────────── */}
-            {status === "error" && (
-              <div className="mt-6 flex gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3.5">
-                <AlertTriangle size={16} className="mt-0.5 flex-shrink-0 text-red-500" />
-                <div>
-                  <p className="text-sm font-semibold text-red-700">Submission failed</p>
-                  <p className="mt-0.5 text-xs text-red-600 leading-snug">{apiError}</p>
+            {/* ── Location status ─────────────────────────────────────────── */}
+            {status !== "success" && !useManualLocation && (
+              <div className="mt-6">
+                <LocationStatusCard
+                  status={locationStatus}
+                  errorMessage={locationError}
+                  onRetry={requestLocation}
+                  onUseManual={() => setUseManualLocation(true)}
+                />
+              </div>
+            )}
+
+            {/*
+              Manual location fallback — shown once the artisan opts in after
+              the browser Geolocation API failed. Swaps out entirely for the
+              status card above rather than showing both at once.
+            */}
+            {status !== "success" && useManualLocation && (
+              <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 px-4 py-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
+                    <MapPin size={14} className="text-slate-400" />
+                    Enter your location manually
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseManualLocation(false);
+                      requestLocation();
+                    }}
+                    className="text-xs font-semibold text-teal-600 hover:text-teal-700"
+                  >
+                    Use my location instead
+                  </button>
+                </div>
+                <p className="mb-3 text-[11px] text-slate-400 leading-snug">
+                  Find your coordinates by searching your address on Google Maps,
+                  right-clicking your location, and copying the two numbers shown.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Latitude" error={fieldErrors.manualLatitude}>
+                    <IconInput
+                      icon={<MapPin size={15} />}
+                      type="number"
+                      name="manualLatitude"
+                      placeholder="e.g. -1.0467"
+                      step="any"
+                      value={values.manualLatitude}
+                      onChange={handleChange}
+                      inputMode="decimal"
+                      error={fieldErrors.manualLatitude}
+                    />
+                  </Field>
+                  <Field label="Longitude" error={fieldErrors.manualLongitude}>
+                    <IconInput
+                      icon={<MapPin size={15} />}
+                      type="number"
+                      name="manualLongitude"
+                      placeholder="e.g. 37.15"
+                      step="any"
+                      value={values.manualLongitude}
+                      onChange={handleChange}
+                      inputMode="decimal"
+                      error={fieldErrors.manualLongitude}
+                    />
+                  </Field>
                 </div>
               </div>
             )}
 
-            {/* ── Success state ──────────────────────────────────────────── */}
+            {/* ── API error alert ─────────────────────────────────────────── */}
+            {status === "error" && (
+              <div className="mt-4 flex gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3.5">
+                <AlertTriangle size={16} className="mt-0.5 flex-shrink-0 text-red-500" />
+                <div>
+                  <p className="text-sm font-semibold text-red-700">Submission failed</p>
+                  <p className="mt-0.5 text-xs text-red-600 leading-snug">{apiErrorMessage}</p>
+                </div>
+              </div>
+            )}
+
+            {/* ── Success state ────────────────────────────────────────────── */}
             {status === "success" ? (
               <div className="mt-6">
-                <SuccessCard name={values.fullName.split(" ")[0]} />
+                <SuccessCard
+                  firstName={values.fullName.trim().split(" ")[0]}
+                  resolvedCategoryName={resolvedCategoryName}
+                  userId={registeredUserId}
+                  email={values.email.trim()}
+                />
               </div>
             ) : (
 
-              /* ── Onboarding form ──────────────────────────────────────── */
+              /* ── Form ─────────────────────────────────────────────────── */
               <form onSubmit={handleSubmit} noValidate>
+                {/*
+                  fieldset[disabled] locks every child input/select/button
+                  while the request is in-flight — one prop replaces N per-field
+                  disabled attributes.
+                */}
                 <fieldset disabled={status === "loading"} className="space-y-4 disabled:opacity-60">
 
-                  {/* ── Section 1: Personal ─────────────────────────────── */}
+                  {/* ── SECTION 0: Account ─────────────────────────────────── */}
+                  <SectionRule label="Account" />
+
+                  {/* email → supabase.auth.signUp({ email }) — never sent to /api/register/artisan */}
+                  <Field label="Email" error={fieldErrors.email}>
+                    <IconInput
+                      icon={<Mail size={15} />}
+                      type="email"
+                      name="email"
+                      placeholder="you@example.com"
+                      value={values.email}
+                      onChange={handleChange}
+                      autoComplete="email"
+                      error={fieldErrors.email}
+                    />
+                  </Field>
+
+                  {/* password → supabase.auth.signUp({ password }) */}
+                  <Field label="Password" error={fieldErrors.password} hint="At least 8 characters.">
+                    <IconInput
+                      icon={<Lock size={15} />}
+                      type="password"
+                      name="password"
+                      placeholder="••••••••"
+                      value={values.password}
+                      onChange={handleChange}
+                      autoComplete="new-password"
+                      error={fieldErrors.password}
+                    />
+                  </Field>
+
+                  {/* confirmPassword → client-side check only */}
+                  <Field label="Confirm Password" error={fieldErrors.confirmPassword}>
+                    <IconInput
+                      icon={<Lock size={15} />}
+                      type="password"
+                      name="confirmPassword"
+                      placeholder="••••••••"
+                      value={values.confirmPassword}
+                      onChange={handleChange}
+                      autoComplete="new-password"
+                      error={fieldErrors.confirmPassword}
+                    />
+                  </Field>
+
+                  {/* ── SECTION 1: Personal Information ───────────────────── */}
                   <SectionRule label="Personal Information" />
 
-                  <Field label="Full Name" error={errors.fullName}>
+                  {/* fullName → string */}
+                  <Field label="Full Name" error={fieldErrors.fullName}>
                     <IconInput
                       icon={<User size={15} />}
                       type="text"
@@ -456,13 +1005,14 @@ export default function ArtisanOnboardingPage() {
                       value={values.fullName}
                       onChange={handleChange}
                       autoComplete="name"
-                      error={errors.fullName}
+                      error={fieldErrors.fullName}
                     />
                   </Field>
 
+                  {/* phone → string (stripped of spaces/dashes in buildPayload) */}
                   <Field
                     label="M-Pesa Phone Number"
-                    error={errors.phone}
+                    error={fieldErrors.phone}
                     hint="Used for job notifications and receiving payouts."
                   >
                     <IconInput
@@ -474,45 +1024,45 @@ export default function ArtisanOnboardingPage() {
                       onChange={handleChange}
                       autoComplete="tel"
                       inputMode="tel"
-                      error={errors.phone}
+                      error={fieldErrors.phone}
                     />
                   </Field>
 
-                  {/* ── Section 2: Trade ────────────────────────────────── */}
+                  {/* ── SECTION 2: Trade Details ───────────────────────────── */}
                   <SectionRule label="Trade Details" />
 
-                  <Field label="Primary Trade Skill" error={errors.tradeSkill}>
+                  {/*
+                    tradeSkill → string
+                    Known values match the `name` column in `categories` exactly.
+                    "other" triggers the customCategoryName insertion path on the backend.
+                  */}
+                  <Field label="Primary Trade Skill" error={fieldErrors.tradeSkill}>
                     <IconSelect
                       icon={<Briefcase size={15} />}
                       name="tradeSkill"
                       placeholder="Select your trade…"
                       value={values.tradeSkill}
-                      onChange={(e) => {
-                        handleChange(e);
-                        // Clear the custom name whenever the dropdown changes
-                        // so stale text doesn't sneak into the payload
-                        if (e.target.value !== "other") {
-                          setValues((prev) => ({ ...prev, customCategoryName: "" }));
-                          setErrors((prev) => ({ ...prev, customCategoryName: undefined }));
-                        }
-                      }}
-                      error={errors.tradeSkill}
+                      onChange={handleTradeSkillChange}
+                      error={fieldErrors.tradeSkill}
                     >
-                      {TRADE_SKILLS.map((s) => (
-                        <option key={s} value={s}>{s}</option>
+                      {KNOWN_TRADE_SKILLS.map((skill) => (
+                        <option key={skill} value={skill}>{skill}</option>
                       ))}
-                      <option disabled className="text-slate-300">──────────</option>
+                      <option disabled>──────────</option>
                       <option value="other">Other (Specify...)</option>
                     </IconSelect>
                   </Field>
 
-                  {/* Conditional: only shown when "Other" is selected */}
-                  {values.tradeSkill === "other" && (
+                  {/*
+                    customCategoryName → string (only in payload when tradeSkill === "other")
+                    Conditionally rendered; autoFocus moves keyboard here immediately.
+                  */}
+                  {isCustomTrade && (
                     <div className="animate-in fade-in slide-in-from-top-1 duration-200">
                       <Field
                         label="Specify Your Trade"
-                        error={errors.customCategoryName}
-                        hint="This will be reviewed and added to our categories."
+                        error={fieldErrors.customCategoryName}
+                        hint="This will be reviewed and added to our category list."
                       >
                         <IconInput
                           icon={<Briefcase size={15} />}
@@ -523,15 +1073,20 @@ export default function ArtisanOnboardingPage() {
                           onChange={handleChange}
                           autoComplete="off"
                           autoFocus
-                          error={errors.customCategoryName}
+                          error={fieldErrors.customCategoryName}
                         />
                       </Field>
                     </div>
                   )}
 
+                  {/*
+                    yearsExperience → number (integer)
+                    Stored as string in state; buildPayload() calls parseInt(value, 10).
+                    Backend check: typeof !== "number" || < 0 || > 60
+                  */}
                   <Field
                     label="Years of Experience"
-                    error={errors.yearsExperience}
+                    error={fieldErrors.yearsExperience}
                     hint="Enter 0 if you're just starting out — everyone begins somewhere."
                   >
                     <IconInput
@@ -541,19 +1096,25 @@ export default function ArtisanOnboardingPage() {
                       placeholder="e.g. 5"
                       min={0}
                       max={60}
+                      step={1}
                       value={values.yearsExperience}
                       onChange={handleChange}
                       inputMode="numeric"
-                      error={errors.yearsExperience}
+                      error={fieldErrors.yearsExperience}
                     />
                   </Field>
 
-                  {/* ── Section 3: Business setup ────────────────────────── */}
+                  {/* ── SECTION 3: Business Setup ──────────────────────────── */}
                   <SectionRule label="Business Setup" />
 
+                  {/*
+                    pricingMode → "flat" | "custom_quote" | "both"
+                    The <option> values below match the backend's allowed strings exactly.
+                    Backend check: !["flat","custom_quote","both"].includes(value)
+                  */}
                   <Field
                     label="Pricing Mode"
-                    error={errors.pricingMode}
+                    error={fieldErrors.pricingMode}
                     hint={pricingHint}
                   >
                     <IconSelect
@@ -562,7 +1123,7 @@ export default function ArtisanOnboardingPage() {
                       placeholder="How do you price your work?"
                       value={values.pricingMode}
                       onChange={handleChange}
-                      error={errors.pricingMode}
+                      error={fieldErrors.pricingMode}
                     >
                       {PRICING_MODES.map((m) => (
                         <option key={m.value} value={m.value}>{m.label}</option>
@@ -570,9 +1131,14 @@ export default function ArtisanOnboardingPage() {
                     </IconSelect>
                   </Field>
 
+                  {/*
+                    startingPrice → number (float)
+                    Stored as string in state; buildPayload() calls parseFloat(value).
+                    Backend check: typeof !== "number" || <= 0
+                  */}
                   <Field
                     label="Starting Price (KES)"
-                    error={errors.startingPrice}
+                    error={fieldErrors.startingPrice}
                     hint={
                       values.pricingMode === "custom_quote"
                         ? "Your typical minimum, even for quote-based jobs."
@@ -585,18 +1151,20 @@ export default function ArtisanOnboardingPage() {
                       name="startingPrice"
                       placeholder="e.g. 800"
                       min={1}
+                      step="any"
                       value={values.startingPrice}
                       onChange={handleChange}
                       inputMode="decimal"
-                      error={errors.startingPrice}
+                      error={fieldErrors.startingPrice}
                     />
                   </Field>
 
-                  <Field
-                    label="Professional Bio"
-                    error={errors.bio}
-                    optional
-                  >
+                  {/*
+                    bio → string (optional)
+                    Omitted from payload entirely when empty (key not sent, not "").
+                    Backend field: bio?: string
+                  */}
+                  <Field label="Professional Bio" error={fieldErrors.bio} optional>
                     <div className="relative">
                       <div className="pointer-events-none absolute left-3 top-3 text-slate-400">
                         <FileText size={15} />
@@ -608,7 +1176,7 @@ export default function ArtisanOnboardingPage() {
                         placeholder="Briefly describe your skills, experience, and what makes you great at your trade…"
                         value={values.bio}
                         onChange={handleChange}
-                        className={`${inputCls(!!errors.bio)} resize-none pl-9 pr-3 py-2.5`}
+                        className={`${inputCls(!!fieldErrors.bio)} resize-none pl-9 pr-3 py-2.5`}
                       />
                     </div>
                     <div className="mt-1 flex justify-end">
@@ -632,9 +1200,9 @@ export default function ArtisanOnboardingPage() {
                     type="submit"
                     disabled={status === "loading"}
                     className="flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600
-                               py-3 text-sm font-semibold text-white shadow-sm
-                               transition-colors hover:bg-teal-700 focus-visible:outline-none
-                               focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2
+                               py-3 text-sm font-semibold text-white shadow-sm transition-colors
+                               hover:bg-teal-700 focus-visible:outline-none focus-visible:ring-2
+                               focus-visible:ring-teal-500 focus-visible:ring-offset-2
                                disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     {status === "loading" ? (
@@ -663,7 +1231,7 @@ export default function ArtisanOnboardingPage() {
           </div>
         </div>
 
-        {/* Already have an account */}
+        {/* Already registered */}
         {status !== "success" && (
           <p className="mt-5 text-center text-sm text-slate-500">
             Already registered?{" "}
@@ -675,6 +1243,7 @@ export default function ArtisanOnboardingPage() {
             </a>
           </p>
         )}
+
       </div>
     </div>
   );

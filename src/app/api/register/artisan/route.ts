@@ -162,42 +162,62 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // ── 4. Resolve category ID ──────────────────────────────────────────────────
   //
   // Two paths:
-  //   A) tradeSkill is a known value  → look up the existing category by name.
-  //   B) tradeSkill === "other"        → insert a new row into `categories`,
-  //      then use the newly created ID.
+  //   A) tradeSkill is a known value  → look up the existing category by name
+  //      or slug. If nothing matches, this is treated as a client error —
+  //      the frontend should only ever send whitelisted values here.
+  //   B) tradeSkill === "other"        → look for an existing custom category
+  //      with a matching slug (re-use it if found), otherwise insert a new
+  //      row into `categories` and use the newly created ID.
   //
   let categoryId: number;
 
   if (data.tradeSkill !== "other") {
-    // ── Path A: look up existing category ────────────────────────────────────
-    console.log(`[register/artisan] Looking up category: "${data.tradeSkill}"`);
+    // ── Path A: look up existing (whitelisted) category ──────────────────────
+    const lookupName = data.tradeSkill.trim();
+    const lookupSlug = toSlug(lookupName);
+
+    console.log("[register/artisan] Looking up category:", lookupName);
 
     const { data: categoryRow, error: categoryLookupError } = await supabase
       .from("categories")
       .select("id")
-      .eq("name", data.tradeSkill)
-      .single();
+      .or(`name.ilike.${lookupName},slug.ilike.${lookupSlug}`)
+      .maybeSingle();
 
     if (categoryLookupError) {
       console.error(
-        "SUPABASE ERROR LOG: Category lookup failed for tradeSkill =",
-        data.tradeSkill,
+        "SUPABASE ERROR LOG: Category lookup failed for:",
+        lookupName,
         "| Error:",
         categoryLookupError
       );
       return NextResponse.json(
-        { message: `Category "${data.tradeSkill}" not found. Please try again or select Other.` },
-        { status: 404 }
+        { message: "Failed to resolve trade category. Please try again." },
+        { status: 500 }
+      );
+    }
+
+    if (!categoryRow) {
+      // Don't silently fall back to some arbitrary default category id here —
+      // that would mislabel the artisan's trade with no visible error. If the
+      // frontend is sending a value that isn't in `categories`, that's a bug
+      // worth surfacing rather than papering over.
+      console.error(
+        "SUPABASE ERROR LOG: No category found matching tradeSkill:",
+        lookupName
+      );
+      return NextResponse.json(
+        { message: `Unknown trade category: "${data.tradeSkill}".` },
+        { status: 422 }
       );
     }
 
     categoryId = categoryRow.id as number;
     console.log(`[register/artisan] Resolved category ID: ${categoryId}`);
-
   } else {
-    // ── Path B: insert a new custom category ──────────────────────────────────
-    const rawName  = data.customCategoryName!.trim();
-    const slug     = toSlug(rawName);
+    // ── Path B: custom category submitted via "Other" ─────────────────────────
+    const rawName = data.customCategoryName!.trim();
+    const slug = toSlug(rawName);
 
     console.log(`[register/artisan] Inserting custom category: name="${rawName}", slug="${slug}"`);
 
@@ -226,7 +246,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       // Re-use the existing category rather than inserting a duplicate
       categoryId = existingCategory.id as number;
       console.log(`[register/artisan] Re-using existing category for slug "${slug}", ID: ${categoryId}`);
-
     } else {
       // Insert the new category row
       const { data: newCategory, error: categoryInsertError } = await supabase
@@ -260,20 +279,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   //
   console.log(`[register/artisan] Upserting artisan_profiles for userId: ${data.userId}`);
 
+  // `base_location` is a PostGIS `geography(Point, 4326)` column, not two
+  // separate lat/lng numeric columns. PostGIS expects WKT points in
+  // longitude-latitude order (x, y) — the reverse of how we usually say
+  // "lat, lng" out loud, so don't swap these.
+  const baseLocationWKT = `SRID=4326;POINT(${data.longitude} ${data.latitude})`;
+
   const { error: profileError } = await supabase
     .from("artisan_profiles")
     .upsert(
       {
-        user_id:           data.userId,
-        bio:               data.bio?.trim() ?? "",
-        years_experience:  data.yearsExperience,
-        availability:      "offline",            // default until they toggle it on
-        starting_price:    data.startingPrice,
-        pricing_type:      data.pricingMode,
-        base_location_lat: data.latitude,
-        base_location_lng: data.longitude,
-        rating_avg:        0,
-        rating_count:      0,
+        user_id:          data.userId,
+        bio:              data.bio?.trim() ?? "",
+        years_experience: data.yearsExperience,
+        availability:     "offline",            // default until they toggle it on
+        starting_price:   data.startingPrice,
+        pricing_type:     data.pricingMode,
+        base_location:    baseLocationWKT,
+        rating_avg:       0,
+        rating_count:     0,
       },
       { onConflict: "user_id" }   // safe re-submission: update rather than error
     );
