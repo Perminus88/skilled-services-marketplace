@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Skilled Services Marketplace
+
+A marketplace connecting clients with verified skilled-trade artisans (plumbers, electricians, cleaners, etc.) in Kenya. Built with Next.js 14 App Router, Supabase (Postgres + Auth + PostGIS), TypeScript, and Tailwind CSS.
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). Requires a `.env.local` with Supabase project credentials (see `.env.example` if present, or ask a maintainer).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Architecture notes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Route groups**: `(artisan)` and `(client)` folders are Next.js route groups — they organize files but don't appear in the URL. `src/app/client/signup/page.tsx` (no parens) is a real path segment, resolving to `/client/signup`.
+- **Writes** (INSERT/UPDATE) go through API routes using the Supabase service role key, which bypasses RLS. This applies to both artisan and client registration.
+- **RLS**: `users`, `artisan_profiles`, and `artisan_categories` only allow `SELECT` of your own row. The discovery page reads other users' data through `/api/discovery/*` routes (service role key), not directly from the browser client.
 
-## Learn More
+## Schema gotchas (custom Postgres enums — not plain text/booleans)
 
-To learn more about Next.js, take a look at the following resources:
+- `users.role`: `client` | `artisan` | `admin`
+- `users.verification_status`: `pending` | `verified` | `rejected` — **not** `approved`
+- `artisan_profiles.availability`: `available` | `busy` | `offline` — **not** a boolean
+- `artisan_profiles.base_location`: `geography(Point, 4326)` — use `ST_Distance` with `ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography`, not `::geometry`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The `handle_new_user()` trigger on `auth.users` sets `role` from signup metadata (`options.data.role` passed to `supabase.auth.signUp()`), defaulting to `'artisan'` if not provided.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Status
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- ✅ Artisan onboarding, email confirmation, login, status page
+- ✅ Client discovery page (search, filter, geolocation, PostGIS distance sort)
+- 🔧 Client signup/login (built, in testing)
+- ⬜ Booking flow + M-Pesa STK Push
+- ⬜ Admin dashboard
