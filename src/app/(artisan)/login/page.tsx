@@ -82,7 +82,7 @@ export default function LoginPage() {
     setStatus("loading");
     setError("");
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -93,10 +93,39 @@ export default function LoginPage() {
       return;
     }
 
-    // Success — navigate to the status dashboard.
-    // router.refresh() clears any server-side route cache that might still
-    // show the unauthenticated state.
-    router.push("/status");
+    const userId = authData.user?.id;
+    if (!userId) {
+      setError("Something went wrong signing you in. Please try again.");
+      setStatus("error");
+      return;
+    }
+
+    // Look up role to decide where this person actually belongs.
+    // Artisans go to /status (verification progress), clients go to
+    // /client/dashboard (account + future bookings). Falling back to
+    // /status on lookup failure preserves prior behavior rather than
+    // stranding the person on a blank page.
+    const { data: userRow, error: roleError } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (roleError) {
+      console.error("[login] role lookup failed:", roleError);
+      router.push("/status");
+      router.refresh();
+      return;
+    }
+
+    if (userRow?.role === "client") {
+      router.push("/client/dashboard");
+    } else {
+      // Covers 'artisan' and any unexpected/missing role rather than
+      // silently failing — existing behavior for artisans is unchanged.
+      router.push("/status");
+    }
+
     router.refresh();
   }
 
@@ -231,10 +260,10 @@ export default function LoginPage() {
         <p className="mt-5 text-center text-sm text-slate-500">
           Don&apos;t have an account?{" "}
           <a
-            href="/onboarding"
+            href="/signup"
             className="font-semibold text-teal-600 transition-colors hover:text-teal-700"
           >
-            Apply as an artisan
+            Get started
           </a>
         </p>
 

@@ -33,8 +33,6 @@ interface Artisan {
 
 type LocationStatus = "loading" | "success" | "error" | "denied";
 
-// Fallback used if geolocation fails — Murang'a center, matching the
-// coordinates already used as a default elsewhere in this app.
 const FALLBACK_COORDS = { latitude: -1.0467, longitude: 37.15 };
 const RADIUS_KM = 50;
 const PAGE_SIZE = 20;
@@ -132,9 +130,12 @@ function ArtisanCard({ artisan }: { artisan: Artisan }) {
               {formatPricingType(artisan.pricing_type)}
             </p>
           </div>
-          <button className="rounded-lg bg-teal-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-teal-700">
+          <a
+            href={`/discovery/${artisan.user_id}`}
+            className="rounded-lg bg-teal-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-teal-700"
+          >
             View profile
-          </button>
+          </a>
         </div>
       </div>
     </div>
@@ -171,13 +172,11 @@ export default function DiscoveryPage() {
   const [error, setError] = useState<string>("");
   const [hasMore, setHasMore] = useState<boolean>(true);
 
-  // ── Debounce free-text search input ──────────────────────────────────────
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 400);
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  // ── Categories, via the new API route (works regardless of client auth) ──
   useEffect(() => {
     async function loadCategories() {
       try {
@@ -192,7 +191,6 @@ export default function DiscoveryPage() {
     loadCategories();
   }, []);
 
-  // ── Geolocation, with silent fallback to Murang'a center ────────────────
   useEffect(() => {
     if (!("geolocation" in navigator)) {
       setCoords(FALLBACK_COORDS);
@@ -216,7 +214,6 @@ export default function DiscoveryPage() {
     );
   }, []);
 
-  // ── Fetch artisans whenever filters or location change ──────────────────
   const fetchArtisans = useCallback(
     async (offset: number, append: boolean) => {
       if (!coords) return;
@@ -266,12 +263,10 @@ export default function DiscoveryPage() {
     fetchArtisans(artisans.length, true);
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-8 sm:py-10">
       <div className="mx-auto w-full max-w-6xl">
 
-        {/* Header */}
         <div className="mb-6 flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-[#F5B700] font-black text-base leading-none select-none">
             G
@@ -289,7 +284,6 @@ export default function DiscoveryPage() {
             "Showing artisans near Murang'a — enable location for results near you."}
         </p>
 
-        {/* Filters */}
         <div className="mt-5 flex flex-col gap-3 sm:flex-row">
           <div className="relative flex-1">
             <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
@@ -324,10 +318,8 @@ export default function DiscoveryPage() {
           </div>
         </div>
 
-        {/* Body: results + map */}
         <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-[1fr_360px]">
 
-          {/* Results */}
           <div>
             {error && (
               <div className="mb-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3.5">
@@ -385,7 +377,6 @@ export default function DiscoveryPage() {
             )}
           </div>
 
-          {/* Map placeholder */}
           <div className="lg:sticky lg:top-8 lg:h-[calc(100vh-220px)]">
             <MapPlaceholder />
           </div>
