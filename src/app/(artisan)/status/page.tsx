@@ -167,10 +167,20 @@ export default function StatusPage() {
       const categoryName =
         ((categoryLink?.categories as { name: string }[] | undefined)?.[0]?.name) ?? null;
 
+      const resolvedStatus = (userRow.verification_status as VerificationStatus) ?? "pending";
+
+      // Verified artisans have no reason to see this page — it exists
+      // purely to communicate pre-verification status. Once verified,
+      // send them straight to their real working dashboard.
+      if (resolvedStatus === "verified") {
+        router.replace("/artisan/dashboard");
+        return;
+      }
+
       setProfile({
         fullName:           userRow.full_name       ?? user.email ?? "Artisan",
         phone:              userRow.phone            ?? "",
-        verificationStatus: (userRow.verification_status as VerificationStatus) ?? "pending",
+        verificationStatus: resolvedStatus,
         categoryName,
         startingPrice:      artisanProfile?.starting_price ?? null,
         pricingType:        artisanProfile?.pricing_type   ?? null,
