@@ -24,6 +24,21 @@ interface BookingRow {
   clientName:    string;
 }
 
+interface ActiveJobRow {
+  id:                         string;
+  status:                     string;
+  payment_status:             string;
+  quoted_price:               number | null;
+  description:                string;
+  scheduled_at:               string | null;
+  created_at:                 string;
+  client_id:                  string;
+  clientName:                 string;
+  client_marked_complete_at:  string | null;
+  artisan_marked_complete_at: string | null;
+  auto_release_at:            string | null;
+}
+
 type PageStatus = "loading" | "ready" | "error";
 type ActionState = { bookingId: string; action: "accept" | "decline" | "quote" } | null;
 
@@ -120,6 +135,62 @@ function RequestCard({
   );
 }
 
+function ActiveJobCard({
+  job,
+  onMarkComplete,
+  isMarking,
+}: {
+  job:            ActiveJobRow;
+  onMarkComplete: (bookingId: string) => void;
+  isMarking:      boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">{job.clientName}</p>
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-400">
+            <Clock size={11} />
+            {new Date(job.created_at).toLocaleString()}
+          </p>
+        </div>
+        {job.quoted_price != null && (
+          <span className="flex-shrink-0 text-sm font-bold text-slate-900">
+            KES {job.quoted_price.toLocaleString()}
+          </span>
+        )}
+      </div>
+
+      <p className="mt-2.5 text-sm text-slate-600 leading-relaxed">{job.description}</p>
+
+      {job.payment_status !== "held" ? (
+        <p className="mt-3 text-xs text-slate-400 border-t border-slate-100 pt-3">
+          Waiting on the client to complete payment before this job can be marked done.
+        </p>
+      ) : job.artisan_marked_complete_at ? (
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          <p className="flex items-center gap-1.5 text-xs text-teal-700">
+            <CheckCircle2 size={12} />
+            You marked this complete.
+            {job.auto_release_at && (
+              <> Payment auto-releases {new Date(job.auto_release_at).toLocaleString()} if the client doesn&apos;t respond first.</>
+            )}
+          </p>
+        </div>
+      ) : (
+        <button
+          disabled={isMarking}
+          onClick={() => onMarkComplete(job.id)}
+          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-teal-600 py-2 text-xs font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+        >
+          {isMarking ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+          {isMarking ? "Marking…" : "Mark job complete"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
@@ -130,10 +201,14 @@ export default function ArtisanDashboardPage() {
   const [authUser,    setAuthUser]    = useState<User | null>(null);
   const [pricingType, setPricingType] = useState<string | null>(null);
   const [bookings,    setBookings]    = useState<BookingRow[]>([]);
+  const [activeJobs,  setActiveJobs]  = useState<ActiveJobRow[]>([]);
   const [pageStatus,  setPageStatus]  = useState<PageStatus>("loading");
   const [errorMessage, setErrorMessage] = useState("");
   const [actionState, setActionState] = useState<ActionState>(null);
   const [actionError, setActionError] = useState("");
+
+  const [markingBookingId, setMarkingBookingId] = useState<string | null>(null);
+  const [markError,        setMarkError]        = useState("");
 
   async function loadDashboard() {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -208,6 +283,42 @@ export default function ArtisanDashboardPage() {
 
     setBookings(mapped);
     setPageStatus("ready");
+
+    // Active jobs (confirmed/in_progress) — separate list, separate route.
+    const activeRes = await fetch("/api/bookings/artisan-active", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const activeJson = await activeRes.json().catch(() => ({}));
+
+    if (activeRes.ok) {
+      const activeRows = (activeJson.bookings ?? []) as Array<{
+        id: string; status: string; payment_status: string; quoted_price: number | null;
+        description: string; scheduled_at: string | null; created_at: string; client_id: string;
+        client_marked_complete_at: string | null; artisan_marked_complete_at: string | null;
+        auto_release_at: string | null;
+        users: { full_name: string } | null;
+      }>;
+
+      setActiveJobs(
+        activeRows.map((j) => ({
+          id:                         j.id,
+          status:                     j.status,
+          payment_status:             j.payment_status,
+          quoted_price:               j.quoted_price,
+          description:                j.description,
+          scheduled_at:               j.scheduled_at,
+          created_at:                 j.created_at,
+          client_id:                  j.client_id,
+          clientName:                 j.users?.full_name ?? "A client",
+          client_marked_complete_at:  j.client_marked_complete_at,
+          artisan_marked_complete_at: j.artisan_marked_complete_at,
+          auto_release_at:            j.auto_release_at,
+        }))
+      );
+    } else {
+      console.error("[artisan/dashboard] active jobs fetch failed:", activeJson);
+      // Non-fatal — incoming requests still work even if this list fails.
+    }
   }
 
   useEffect(() => {
@@ -247,6 +358,43 @@ export default function ArtisanDashboardPage() {
       setActionError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setActionState(null);
+    }
+  }
+
+  async function handleMarkComplete(bookingId: string) {
+    setMarkingBookingId(bookingId);
+    setMarkError("");
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+    if (!accessToken) {
+      router.replace("/login");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/mark-complete`, {
+        method:  "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.message ?? "Something went wrong.");
+
+      setActiveJobs((prev) =>
+        prev.map((j) =>
+          j.id === bookingId
+            ? {
+                ...j,
+                artisan_marked_complete_at: new Date().toISOString(),
+                auto_release_at: json.autoReleaseAt ?? j.auto_release_at,
+              }
+            : j
+        )
+      );
+    } catch (err) {
+      setMarkError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setMarkingBookingId(null);
     }
   }
 
@@ -330,6 +478,38 @@ export default function ArtisanDashboardPage() {
             ))}
           </div>
         </div>
+
+        {activeJobs.length > 0 && (
+          <div className="overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-slate-900/5">
+            <div className="px-6 pt-6 pb-4 sm:px-8">
+              <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+                <CheckCircle2 size={18} className="text-teal-600" />
+                Active Jobs
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {activeJobs.length} job{activeJobs.length === 1 ? "" : "s"} in progress.
+              </p>
+            </div>
+
+            {markError && (
+              <div className="mx-6 mb-4 flex gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 sm:mx-8">
+                <AlertTriangle size={15} className="mt-0.5 flex-shrink-0 text-red-500" />
+                <p className="text-sm text-red-700">{markError}</p>
+              </div>
+            )}
+
+            <div className="space-y-3 px-6 pb-6 sm:px-8">
+              {activeJobs.map((j) => (
+                <ActiveJobCard
+                  key={j.id}
+                  job={j}
+                  onMarkComplete={handleMarkComplete}
+                  isMarking={markingBookingId === j.id}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

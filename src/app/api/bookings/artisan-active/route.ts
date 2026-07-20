@@ -27,16 +27,20 @@ export async function GET(req: NextRequest) {
 
   await releaseOverdueBookings(supabase);
 
+  // client_id has a named FK (bookings_client_id_fkey), so the embedded
+  // join is safe here — unlike artisan_id, which has none.
   const { data, error } = await supabase
     .from("bookings")
-    .select("id, status, quoted_price, description, scheduled_at, created_at, client_id, users!bookings_client_id_fkey(full_name)")
+    .select(
+      "id, status, payment_status, quoted_price, description, scheduled_at, created_at, client_id, client_marked_complete_at, artisan_marked_complete_at, auto_release_at, users!bookings_client_id_fkey(full_name)"
+    )
     .eq("artisan_id", artisanId)
-    .eq("status", "requested")
+    .in("status", ["confirmed", "in_progress"])
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("[bookings/artisan-incoming] query failed:", error);
-    return NextResponse.json({ message: "Failed to load booking requests." }, { status: 500 });
+    console.error("[bookings/artisan-active] query failed:", error);
+    return NextResponse.json({ message: "Failed to load active jobs." }, { status: 500 });
   }
 
   return NextResponse.json({ bookings: data ?? [] }, { status: 200 });
