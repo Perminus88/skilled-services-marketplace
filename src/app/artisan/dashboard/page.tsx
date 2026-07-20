@@ -161,24 +161,41 @@ export default function ArtisanDashboardPage() {
       .maybeSingle();
     setPricingType(profile?.pricing_type ?? null);
 
-    // Fetch requested bookings + client names via a join. RLS on `bookings`
-    // allows an artisan to select rows where artisan_id = auth.uid(), so
-    // this can run through the regular browser client, not an API route.
-    const { data: bookingRows, error: bookingsError } = await supabase
-      .from("bookings")
-      .select("id, status, quoted_price, description, scheduled_at, created_at, client_id, users!bookings_client_id_fkey(full_name)")
-      .eq("artisan_id", user.id)
-      .eq("status", "requested")
-      .order("created_at", { ascending: false });
+    // Fetched via an API route (service role), not the browser client —
+    // RLS on `users` only allows SELECT of your own row, which silently
+    // blocks the embedded client name lookup if done directly here.
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
 
-    if (bookingsError) {
-      console.error("[artisan/dashboard] bookings query failed:", bookingsError);
+    if (!accessToken) {
+      router.replace("/login");
+      return;
+    }
+
+    const bookingsRes = await fetch("/api/bookings/artisan-incoming", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const bookingsJson = await bookingsRes.json().catch(() => ({}));
+
+    if (!bookingsRes.ok) {
+      console.error("[artisan/dashboard] bookings fetch failed:", bookingsJson);
       setErrorMessage("We couldn't load your booking requests.");
       setPageStatus("error");
       return;
     }
 
-    const mapped: BookingRow[] = (bookingRows ?? []).map((b) => ({
+    const bookingRows = (bookingsJson.bookings ?? []) as Array<{
+      id: string;
+      status: string;
+      quoted_price: number | null;
+      description: string;
+      scheduled_at: string | null;
+      created_at: string;
+      client_id: string;
+      users: { full_name: string } | null;
+    }>;
+
+    const mapped: BookingRow[] = bookingRows.map((b) => ({
       id:           b.id,
       status:       b.status,
       quoted_price: b.quoted_price,
@@ -186,7 +203,7 @@ export default function ArtisanDashboardPage() {
       scheduled_at: b.scheduled_at,
       created_at:   b.created_at,
       client_id:    b.client_id,
-      clientName:   (b.users as unknown as { full_name: string } | null)?.full_name ?? "A client",
+      clientName:   b.users?.full_name ?? "A client",
     }));
 
     setBookings(mapped);
