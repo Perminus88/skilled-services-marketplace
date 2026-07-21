@@ -569,7 +569,7 @@ export default function ClientDashboardPage() {
           </div>
 
           <div className="border-t border-slate-100 px-6 py-5 sm:px-8">
-            
+            <a
               href="/discovery"
               className="flex items-center justify-center gap-2 rounded-lg bg-teal-600
                          py-3 text-sm font-semibold text-white shadow-sm transition-colors
