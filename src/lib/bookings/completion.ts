@@ -4,9 +4,9 @@
 // Used both by the explicit "mark complete" route and by the opportunistic
 // auto-release sweep (for the 48-hour artisan-initiated window).
 
-import { createClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-type SupabaseAdmin = ReturnType<typeof createClient>;
+type SupabaseAdmin = SupabaseClient<any, any, any>;
 
 // Finalizes a single booking: marks it completed and releases payment.
 // NOTE: this does NOT trigger an actual B2C payout to the artisan — that's
@@ -36,7 +36,7 @@ export async function finalizeBooking(supabase: SupabaseAdmin, bookingId: string
 // so it doesn't depend on someone loading a dashboard — see the
 // process-auto-releases route for the entry point to hook up to a cron.)
 export async function releaseOverdueBookings(supabase: SupabaseAdmin) {
-  const { data, error } = await supabase
+  const { data: rawData, error } = await supabase
     .from("bookings")
     .update({
       status:          "completed",
@@ -48,6 +48,8 @@ export async function releaseOverdueBookings(supabase: SupabaseAdmin) {
     .eq("payment_status", "held")
     .in("status", ["confirmed", "in_progress"])
     .select("id");
+
+  const data = rawData as { id: string }[] | null;
 
   if (error) {
     // Non-fatal — this is a best-effort background sweep. Log loudly but
