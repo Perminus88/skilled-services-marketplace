@@ -120,6 +120,8 @@ export default function LoginPage() {
 
     if (userRow?.role === "client") {
       router.push("/client/dashboard");
+    } else if (userRow?.role === "admin") {
+      router.push("/admin/dashboard");
     } else {
       // Covers 'artisan' and any unexpected/missing role rather than
       // silently failing — existing behavior for artisans is unchanged.
