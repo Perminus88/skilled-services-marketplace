@@ -1,6 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import dynamic from "next/dynamic";
+
+const DiscoveryMap = dynamic(() => import("./DiscoveryMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full min-h-[300px] items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-400">
+      Loading map…
+    </div>
+  ),
+});import { useEffect, useState, useCallback, useMemo, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Search, MapPin, Star, Loader2, AlertTriangle,
   Briefcase, ChevronDown, RefreshCw, SlidersHorizontal,
@@ -29,6 +39,8 @@ interface Artisan {
   category_name: string | null;
   category_slug: string | null;
   distance_km: number;
+  latitude: number;
+  longitude: number;
 }
 
 type LocationStatus = "loading" | "success" | "error" | "denied";
@@ -157,11 +169,14 @@ function MapPlaceholder() {
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function DiscoveryPage() {
+function DiscoveryPageInner() {
+  const searchParams = useSearchParams();
+
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get("category") ?? "");
+  const [searchTerm, setSearchTerm] = useState<string>(searchParams.get("search") ?? "");
+  const [debouncedSearch, setDebouncedSearch] = useState<string>(searchParams.get("search") ?? "");
+  const [onlyAvailable, setOnlyAvailable] = useState<boolean>(false);
 
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("loading");
@@ -171,6 +186,7 @@ export default function DiscoveryPage() {
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [hasMore, setHasMore] = useState<boolean>(true);
+  const [selectedArtisanId, setSelectedArtisanId] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 400);
@@ -261,6 +277,31 @@ export default function DiscoveryPage() {
 
   function handleLoadMore() {
     fetchArtisans(artisans.length, true);
+  }
+
+  function handleLocationChange(newCoords: { lat: number; lng: number }) {
+    setCoords({ latitude: newCoords.lat, longitude: newCoords.lng });
+    setLocationStatus("success");
+  }
+
+  function resetToGPSLocation() {
+    if (!("geolocation" in navigator)) {
+      setCoords(FALLBACK_COORDS);
+      setLocationStatus("error");
+      return;
+    }
+    setLocationStatus("loading");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCoords({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+        setLocationStatus("success");
+      },
+      (err) => {
+        setCoords(FALLBACK_COORDS);
+        setLocationStatus(err.code === err.PERMISSION_DENIED ? "denied" : "error");
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+    );
   }
 
   return (
@@ -378,10 +419,44 @@ export default function DiscoveryPage() {
           </div>
 
           <div className="lg:sticky lg:top-8 lg:h-[calc(100vh-220px)]">
-            <MapPlaceholder />
+            {coords ? (
+            <>
+              <button
+                onClick={resetToGPSLocation}
+                className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-teal-600 hover:text-teal-700"
+              >
+                <MapPin size={12} /> Use my current location
+              </button>
+              <DiscoveryMap
+                center={{ lat: coords.latitude, lng: coords.longitude }}
+                artisans={artisans}
+                selectedId={selectedArtisanId}
+                onSelectMarker={setSelectedArtisanId}
+                onLocationChange={handleLocationChange}
+              />
+            </>
+            ) : (
+              <MapPlaceholder />
+            )}
           </div>
         </div>
       </div>
     </div>
+  );
+}
+// useSearchParams() requires a Suspense boundary above it in the App
+// Router — this wraps the real page so initial filters (?category=,
+// ?search=) from links like the landing page's hero search work correctly.
+export default function DiscoveryPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-slate-50">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-teal-600" />
+        </div>
+      }
+    >
+      <DiscoveryPageInner />
+    </Suspense>
   );
 }

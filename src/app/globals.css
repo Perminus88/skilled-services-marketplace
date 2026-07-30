@@ -5,11 +5,25 @@
   --foreground: #171717;
 }
 
-@theme inline {
+/* Replaced unknown @theme at-rule with a class to avoid unknownAtRules warning */
+.theme-inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-space-grotesk);
+  --animate-radar-pulse: radar-pulse 3.2s cubic-bezier(0.2, 0.65, 0.4, 1) infinite;
+}
+
+@keyframes radar-pulse {
+  0% {
+    transform: scale(0.35);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(2.3);
+    opacity: 0;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,4 +37,11 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+.bg-blueprint-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
