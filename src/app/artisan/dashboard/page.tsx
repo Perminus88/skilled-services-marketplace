@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import type { User } from "@supabase/supabase-js";
 import {
   LogOut, Briefcase, Loader2, AlertTriangle, MapPin,
@@ -9,9 +10,23 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
+const RouteMap = dynamic(() => import("./RouteMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-64 items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-400">
+      Loading map…
+    </div>
+  ),
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
+
+interface LatLng {
+  lat: number;
+  lng: number;
+}
 
 interface BookingRow {
   id:            string;
@@ -37,6 +52,8 @@ interface ActiveJobRow {
   client_marked_complete_at:  string | null;
   artisan_marked_complete_at: string | null;
   auto_release_at:            string | null;
+  clientLocation:             LatLng | null;
+  artisanLocation:            LatLng | null;
 }
 
 type PageStatus = "loading" | "ready" | "error";
@@ -144,6 +161,12 @@ function ActiveJobCard({
   onMarkComplete: (bookingId: string) => void;
   isMarking:      boolean;
 }) {
+  const showRoute =
+    (job.status === "confirmed" || job.status === "in_progress") &&
+    job.clientLocation != null &&
+    job.artisanLocation != null;
+    
+
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4">
       <div className="flex items-start justify-between gap-2">
@@ -162,6 +185,16 @@ function ActiveJobCard({
       </div>
 
       <p className="mt-2.5 text-sm text-slate-600 leading-relaxed">{job.description}</p>
+
+      {showRoute && (
+        <div className="mt-3">
+          <RouteMap
+            from={job.artisanLocation!}
+            to={job.clientLocation!}
+            clientName={job.clientName}
+          />
+        </div>
+      )}
 
       {job.payment_status !== "held" ? (
         <p className="mt-3 text-xs text-slate-400 border-t border-slate-100 pt-3">
@@ -210,6 +243,9 @@ export default function ArtisanDashboardPage() {
   const [markingBookingId, setMarkingBookingId] = useState<string | null>(null);
   const [markError,        setMarkError]        = useState("");
 
+  const [availability,         setAvailability]         = useState<string | null>(null);
+  const [updatingAvailability, setUpdatingAvailability] = useState(false);
+
   async function loadDashboard() {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -231,10 +267,11 @@ export default function ArtisanDashboardPage() {
 
     const { data: profile } = await supabase
       .from("artisan_profiles")
-      .select("pricing_type")
+      .select("pricing_type, availability")
       .eq("user_id", user.id)
       .maybeSingle();
     setPricingType(profile?.pricing_type ?? null);
+    setAvailability(profile?.availability ?? null);
 
     // Fetched via an API route (service role), not the browser client —
     // RLS on `users` only allows SELECT of your own row, which silently
@@ -297,6 +334,8 @@ export default function ArtisanDashboardPage() {
         client_marked_complete_at: string | null; artisan_marked_complete_at: string | null;
         auto_release_at: string | null;
         users: { full_name: string } | null;
+        clientLocation: LatLng | null;
+        artisanLocation: LatLng | null;
       }>;
 
       setActiveJobs(
@@ -313,6 +352,8 @@ export default function ArtisanDashboardPage() {
           client_marked_complete_at:  j.client_marked_complete_at,
           artisan_marked_complete_at: j.artisan_marked_complete_at,
           auto_release_at:            j.auto_release_at,
+          clientLocation:             j.clientLocation,
+          artisanLocation:            j.artisanLocation,
         }))
       );
     } else {
@@ -398,6 +439,36 @@ export default function ArtisanDashboardPage() {
     }
   }
 
+  async function handleSetAvailability(status: "available" | "busy" | "offline") {
+    setUpdatingAvailability(true);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+    if (!accessToken) {
+      router.replace("/login");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/artisan/availability", {
+        method:  "POST",
+        headers: {
+          "Content-Type":  "application/json",
+          Authorization:   `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ availability: status }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.message ?? "Something went wrong.");
+
+      setAvailability(status);
+    } catch (err) {
+      console.error("[artisan/dashboard] availability update failed:", err);
+    } finally {
+      setUpdatingAvailability(false);
+    }
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut();
     router.push("/login");
@@ -444,6 +515,33 @@ export default function ArtisanDashboardPage() {
               <LogOut size={13} /> Sign out
             </button>
           </div>
+
+          {availability && (
+            <div className="flex items-center justify-between border-t border-slate-100 px-6 py-3 sm:px-8">
+              <span className="text-xs font-semibold text-slate-500">Your status</span>
+              <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
+                {([
+                  { key: "available", label: "Available", dot: "bg-teal-500" },
+                  { key: "busy",      label: "Busy",       dot: "bg-amber-500" },
+                  { key: "offline",   label: "Offline",    dot: "bg-slate-400" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.key}
+                    disabled={updatingAvailability}
+                    onClick={() => handleSetAvailability(opt.key)}
+                    className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-60 ${
+                      availability === opt.key
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full ${opt.dot}`} />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-slate-900/5">

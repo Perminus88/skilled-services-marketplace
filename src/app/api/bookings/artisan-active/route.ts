@@ -43,5 +43,55 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: "Failed to load active jobs." }, { status: 500 });
   }
 
-  return NextResponse.json({ bookings: data ?? [] }, { status: 200 });
+  // Confirmed: Supabase JS client returns geography columns as raw EWKB
+  // hex, NOT GeoJSON — so we extract lat/lng via a SQL function using
+  // ST_Y/ST_X instead (same proven pattern as search_nearby_artisans).
+  const { data: locations, error: locError } = await supabase.rpc(
+    "get_artisan_active_locations",
+    { p_artisan_id: artisanId }
+  );
+
+  if (locError) {
+    console.error("[bookings/artisan-active] location rpc failed:", locError);
+  }
+
+  type LocationRow = {
+    booking_id: string;
+    client_lat: number | null;
+    client_lng: number | null;
+    artisan_lat: number | null;
+    artisan_lng: number | null;
+  };
+
+  type LatLng = { lat: number; lng: number };
+
+  const locationByBookingId = new Map<
+    string,
+    { clientLocation: LatLng | null; artisanLocation: LatLng | null }
+  >(
+    ((locations ?? []) as LocationRow[]).map((row) => [
+      row.booking_id,
+      {
+        clientLocation:
+          row.client_lat != null && row.client_lng != null
+            ? { lat: row.client_lat, lng: row.client_lng }
+            : null,
+        artisanLocation:
+          row.artisan_lat != null && row.artisan_lng != null
+            ? { lat: row.artisan_lat, lng: row.artisan_lng }
+            : null,
+      },
+    ])
+  );
+
+  const enriched = (data ?? []).map((booking) => {
+    const loc = locationByBookingId.get(booking.id);
+    return {
+      ...booking,
+      clientLocation: loc?.clientLocation ?? null,
+      artisanLocation: loc?.artisanLocation ?? null,
+    };
+  });
+
+  return NextResponse.json({ bookings: enriched }, { status: 200 });
 }
