@@ -6,6 +6,7 @@ import {
   CheckCircle2, Loader2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -273,94 +274,106 @@ export default function ClientSignupPage() {
                 </a>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} noValidate className="mt-6">
-                <fieldset disabled={status === "loading"} className="space-y-4 disabled:opacity-60">
+              <>
+                <div className="mt-6">
+                  <GoogleSignInButton label="Sign up with Google" />
+                </div>
 
-                  <Field label="Full Name" error={fieldErrors.fullName}>
-                    <IconInput
-                      icon={<User size={15} />}
-                      type="text"
-                      name="fullName"
-                      placeholder="e.g. Jane Wanjiru"
-                      value={values.fullName}
-                      onChange={handleChange}
-                      autoComplete="name"
-                      error={fieldErrors.fullName}
-                    />
-                  </Field>
+                <div className="my-5 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-slate-100" />
+                  <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">or</span>
+                  <div className="h-px flex-1 bg-slate-100" />
+                </div>
 
-                  <Field label="Phone Number" error={fieldErrors.phone}>
-                    <IconInput
-                      icon={<Phone size={15} />}
-                      type="tel"
-                      name="phone"
-                      placeholder="e.g. 0712 345 678"
-                      value={values.phone}
-                      onChange={handleChange}
-                      autoComplete="tel"
-                      inputMode="tel"
-                      error={fieldErrors.phone}
-                    />
-                  </Field>
+                <form onSubmit={handleSubmit} noValidate>
+                  <fieldset disabled={status === "loading"} className="space-y-4 disabled:opacity-60">
 
-                  <Field label="Email" error={fieldErrors.email}>
-                    <IconInput
-                      icon={<Mail size={15} />}
-                      type="email"
-                      name="email"
-                      placeholder="you@example.com"
-                      value={values.email}
-                      onChange={handleChange}
-                      autoComplete="email"
-                      error={fieldErrors.email}
-                    />
-                  </Field>
+                    <Field label="Full Name" error={fieldErrors.fullName}>
+                      <IconInput
+                        icon={<User size={15} />}
+                        type="text"
+                        name="fullName"
+                        placeholder="e.g. Jane Wanjiru"
+                        value={values.fullName}
+                        onChange={handleChange}
+                        autoComplete="name"
+                        error={fieldErrors.fullName}
+                      />
+                    </Field>
 
-                  <Field label="Password" error={fieldErrors.password}>
-                    <IconInput
-                      icon={<Lock size={15} />}
-                      type="password"
-                      name="password"
-                      placeholder="At least 8 characters"
-                      value={values.password}
-                      onChange={handleChange}
-                      autoComplete="new-password"
-                      error={fieldErrors.password}
-                    />
-                  </Field>
+                    <Field label="Phone Number" error={fieldErrors.phone}>
+                      <IconInput
+                        icon={<Phone size={15} />}
+                        type="tel"
+                        name="phone"
+                        placeholder="e.g. 0712 345 678"
+                        value={values.phone}
+                        onChange={handleChange}
+                        autoComplete="tel"
+                        inputMode="tel"
+                        error={fieldErrors.phone}
+                      />
+                    </Field>
 
-                  <Field label="Confirm Password" error={fieldErrors.confirmPassword}>
-                    <IconInput
-                      icon={<Lock size={15} />}
-                      type="password"
-                      name="confirmPassword"
-                      placeholder="••••••••"
-                      value={values.confirmPassword}
-                      onChange={handleChange}
-                      autoComplete="new-password"
-                      error={fieldErrors.confirmPassword}
-                    />
-                  </Field>
+                    <Field label="Email" error={fieldErrors.email}>
+                      <IconInput
+                        icon={<Mail size={15} />}
+                        type="email"
+                        name="email"
+                        placeholder="you@example.com"
+                        value={values.email}
+                        onChange={handleChange}
+                        autoComplete="email"
+                        error={fieldErrors.email}
+                      />
+                    </Field>
 
-                </fieldset>
+                    <Field label="Password" error={fieldErrors.password}>
+                      <IconInput
+                        icon={<Lock size={15} />}
+                        type="password"
+                        name="password"
+                        placeholder="At least 8 characters"
+                        value={values.password}
+                        onChange={handleChange}
+                        autoComplete="new-password"
+                        error={fieldErrors.password}
+                      />
+                    </Field>
 
-                <button
-                  type="submit"
-                  disabled={status === "loading"}
-                  className="mt-7 flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600
-                             py-3 text-sm font-semibold text-white shadow-sm transition-colors
-                             hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  {status === "loading" ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      Creating account…
-                    </>
-                  ) : (
-                    "Create account"
-                  )}
-                </button>
-              </form>
+                    <Field label="Confirm Password" error={fieldErrors.confirmPassword}>
+                      <IconInput
+                        icon={<Lock size={15} />}
+                        type="password"
+                        name="confirmPassword"
+                        placeholder="••••••••"
+                        value={values.confirmPassword}
+                        onChange={handleChange}
+                        autoComplete="new-password"
+                        error={fieldErrors.confirmPassword}
+                      />
+                    </Field>
+
+                  </fieldset>
+
+                  <button
+                    type="submit"
+                    disabled={status === "loading"}
+                    className="mt-7 flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600
+                               py-3 text-sm font-semibold text-white shadow-sm transition-colors
+                               hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {status === "loading" ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Creating account…
+                      </>
+                    ) : (
+                      "Create account"
+                    )}
+                  </button>
+                </form>
+              </>
             )}
           </div>
         </div>

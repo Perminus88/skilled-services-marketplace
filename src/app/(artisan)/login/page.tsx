@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Mail, Lock, AlertTriangle, Loader2 } from "lucide-react";
 // Assumes src/lib/supabase.ts exports: export const supabase = createClient(url, anonKey)
 import { supabase } from "@/lib/supabase";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -231,7 +232,17 @@ export default function LoginPage() {
                   </div>
                 </div>
               </fieldset>
+              {/* Google sign-in */}
+              <div className="mt-6">
+                <GoogleSignInButton label="Sign in with Google" />
+              </div>
 
+              <div className="my-5 flex items-center gap-3">
+                <div className="h-px flex-1 bg-slate-100" />
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">or</span>
+                <div className="h-px flex-1 bg-slate-100" />
+              </div>
+              
               {/* Submit */}
               <div className="mt-6">
                 <button
