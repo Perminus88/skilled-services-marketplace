@@ -11,21 +11,40 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     async function completeSignIn() {
-      // Exchanges the ?code=... param Google/Supabase attached to this URL
-      // for a real session. Required for the PKCE flow used by
-      // signInWithOAuth() — the browser client doesn't do this
-      // automatically the way it does for the older implicit/hash flow.
-      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(
-        window.location.href
-      );
+      // IMPORTANT: don't call exchangeCodeForSession() manually here.
+      // The Supabase client is created with detectSessionInUrl: true
+      // (the default), which means it already auto-detects the ?code=...
+      // param and exchanges it the moment this page's JS bundle loads and
+      // the client initializes. Calling exchangeCodeForSession() again
+      // here fails with "auth code and code verifier should be non-empty"
+      // because the code/PKCE verifier were already consumed by that
+      // automatic exchange a moment earlier.
+      //
+      // Instead, just wait for the session the automatic exchange already
+      // produced (or is about to produce, if we get here first).
+      const { data: { session: existingSession } } = await supabase.auth.getSession();
 
-      if (exchangeError) {
-        console.error("[auth/callback] Code exchange failed:", exchangeError);
-        setError("We couldn't complete your sign-in. Please try again.");
-        return;
+      let session = existingSession;
+
+      if (!session) {
+        // Automatic exchange may still be in flight — wait for the
+        // SIGNED_IN event rather than polling, with a reasonable timeout
+        // so we don't hang forever if something actually did fail.
+        session = await new Promise((resolve) => {
+          const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+            if (event === "SIGNED_IN" && newSession) {
+              listener.subscription.unsubscribe();
+              resolve(newSession);
+            }
+          });
+
+          setTimeout(() => {
+            listener.subscription.unsubscribe();
+            resolve(null);
+          }, 8000);
+        });
       }
 
-      const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
 
       if (!accessToken) {
