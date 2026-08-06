@@ -81,6 +81,7 @@ interface ArtisanRegistrationPayload {
   bio?:                string;   // key absent entirely when empty
   latitude:            number;   // real GPS coordinate, sent as JSON number
   longitude:           number;   // real GPS coordinate, sent as JSON number
+  avatarUrl?:          string;   // public URL from /api/upload/artisan-avatar, if uploaded
 }
 
 /** 201 success response shape from route.ts */
@@ -572,6 +573,9 @@ export default function ArtisanOnboardingPage() {
   const [apiErrorMessage,      setApiErrorMessage]     = useState<string>("");
   const [resolvedCategoryName, setResolvedCategoryName] = useState<string>("");
   const [registeredUserId,     setRegisteredUserId]    = useState<string>("");
+  const [avatarFile,    setAvatarFile]    = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string>("");
+  const [avatarError,   setAvatarError]   = useState<string>("");
 
   // ── Geolocation state ────────────────────────────────────────────────────
   const [coords,            setCoords]            = useState<{ latitude: number; longitude: number } | null>(null);
@@ -636,6 +640,31 @@ export default function ArtisanOnboardingPage() {
     if (fieldErrors[name as keyof FormState]) {
       setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
     }
+  }
+
+  // ── Avatar change handler ────────────────────────────────────────────────
+  // Validates the chosen file client-side (mirrors the checks in
+  // /api/upload/artisan-avatar) and generates a local preview URL. The file
+  // itself is only uploaded later, in handleSubmit, once we have a real
+  // userId from signUp().
+  function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    setAvatarError("");
+    if (!file) {
+      setAvatarFile(null);
+      setAvatarPreview("");
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setAvatarError("Please choose a JPEG, PNG, or WebP image.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError("Image must be smaller than 5MB.");
+      return;
+    }
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
   }
 
   // ── tradeSkill dropdown handler ─────────────────────────────────────────────
@@ -766,9 +795,37 @@ export default function ArtisanOnboardingPage() {
       return;
     }
 
+    // Step 2b — upload avatar (optional). Runs after signUp() since the
+    // upload route needs a real userId to build the storage path.
+    let avatarUrl: string | undefined;
+
+    if (avatarFile) {
+      try {
+        const avatarFormData = new FormData();
+        avatarFormData.append("file", avatarFile);
+        avatarFormData.append("userId", userId);
+
+        const avatarRes = await fetch("/api/upload/artisan-avatar", {
+          method: "POST",
+          body: avatarFormData,
+        });
+        const avatarJson = await avatarRes.json().catch(() => ({}));
+
+        if (avatarRes.ok) {
+          avatarUrl = avatarJson.avatarUrl;
+        } else {
+          // Non-fatal — the artisan can be reminded to add a photo later
+          // rather than blocking the entire registration on an image upload.
+          console.warn("[onboarding] Avatar upload failed:", avatarJson);
+        }
+      } catch (err) {
+        console.warn("[onboarding] Avatar upload failed:", err);
+      }
+    }
+
     // Step 3 — build payload with proper JSON types, using the real
     // Supabase-issued userId and the real GPS coordinates.
-    const payload = buildPayload(values, userId, finalLatitude, finalLongitude);
+    const payload = { ...buildPayload(values, userId, finalLatitude, finalLongitude), ...(avatarUrl && { avatarUrl }) };
 
     // Step 4 — POST to /api/register/artisan
     try {
@@ -994,6 +1051,33 @@ export default function ArtisanOnboardingPage() {
 
                   {/* ── SECTION 1: Personal Information ───────────────────── */}
                   <SectionRule label="Personal Information" />
+
+                  {/* avatarFile → uploaded separately after signUp(), see handleSubmit Step 2b */}
+                  <Field label="Profile Picture" optional error={avatarError}>
+                    <div className="flex items-center gap-4">
+                      {avatarPreview ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={avatarPreview}
+                          alt="Preview"
+                          className="h-16 w-16 rounded-full object-cover ring-1 ring-slate-200"
+                        />
+                      ) : (
+                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-300">
+                          <User size={24} />
+                        </div>
+                      )}
+                      <label className="cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                        Choose photo
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={handleAvatarChange}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </Field>
 
                   {/* fullName → string */}
                   <Field label="Full Name" error={fieldErrors.fullName}>

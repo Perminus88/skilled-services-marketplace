@@ -52,9 +52,12 @@ interface ArtisanRegistrationBody {
   startingPrice:   number;
   bio?:            string;
 
-  // Location
-  latitude:  number;
+ // Location
+  latitude:  number; 
   longitude: number;
+  
+  // Profile picture-optional, set by set by /api/upload/artisan-avatar before this call
+  avatarUrl?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -296,6 +299,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         starting_price:   data.startingPrice,
         pricing_type:     data.pricingMode,
         base_location:    baseLocationWKT,
+        avatar_url:       data.avatarUrl ?? null,
         rating_avg:       0,
         rating_count:     0,
       },
