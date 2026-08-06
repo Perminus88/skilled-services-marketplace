@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import type { User } from "@supabase/supabase-js";
+import { useTranslations } from "next-intl";
 import {
   LogOut, Briefcase, Loader2, AlertTriangle, MapPin,
-  Clock, CheckCircle2, XCircle, DollarSign,
+  Clock, CheckCircle2, XCircle, DollarSign, User as UserIcon, Pencil,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import LanguageSwitcher from "@/app/_components/LanguageSwitcher";
 
 const RouteMap = dynamic(() => import("./RouteMap"), {
   ssr: false,
@@ -74,6 +76,7 @@ function RequestCard({
   onRespond:    (bookingId: string, action: "accept" | "decline" | "quote", price?: number) => void;
   isBusy:       boolean;
 }) {
+  const t = useTranslations("artisanDashboard");
   const [quotePrice, setQuotePrice] = useState("");
   const [showQuoteInput, setShowQuoteInput] = useState(false);
 
@@ -114,7 +117,7 @@ function RequestCard({
             <input
               type="number"
               min={1}
-              placeholder="Your price (KES)"
+              placeholder={t("yourPricePlaceholder")}
               value={quotePrice}
               onChange={(e) => setQuotePrice(e.target.value)}
               className="w-full rounded-lg border border-slate-200 py-2 pl-8 pr-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
@@ -125,7 +128,7 @@ function RequestCard({
             onClick={() => onRespond(booking.id, "quote", parseFloat(quotePrice))}
             className="rounded-lg bg-teal-600 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
           >
-            Send
+            {t("send")}
           </button>
         </div>
       ) : (
@@ -136,7 +139,7 @@ function RequestCard({
             className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-teal-600 py-2 text-xs font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
           >
             <CheckCircle2 size={13} />
-            {needsQuote ? "Send quote" : "Accept"}
+            {needsQuote ? t("sendQuote") : t("accept")}
           </button>
           <button
             disabled={isBusy}
@@ -144,7 +147,7 @@ function RequestCard({
             className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
           >
             <XCircle size={13} />
-            Decline
+            {t("decline")}
           </button>
         </div>
       )}
@@ -161,11 +164,12 @@ function ActiveJobCard({
   onMarkComplete: (bookingId: string) => void;
   isMarking:      boolean;
 }) {
+  const t = useTranslations("artisanDashboard");
+
   const showRoute =
     (job.status === "confirmed" || job.status === "in_progress") &&
     job.clientLocation != null &&
     job.artisanLocation != null;
-    
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -198,15 +202,15 @@ function ActiveJobCard({
 
       {job.payment_status !== "held" ? (
         <p className="mt-3 text-xs text-slate-400 border-t border-slate-100 pt-3">
-          Waiting on the client to complete payment before this job can be marked done.
+          {t("waitingOnPayment")}
         </p>
       ) : job.artisan_marked_complete_at ? (
         <div className="mt-3 border-t border-slate-100 pt-3">
           <p className="flex items-center gap-1.5 text-xs text-teal-700">
             <CheckCircle2 size={12} />
-            You marked this complete.
+            {t("markedComplete")}
             {job.auto_release_at && (
-              <> Payment auto-releases {new Date(job.auto_release_at).toLocaleString()} if the client doesn&apos;t respond first.</>
+              <> {t("autoReleaseNotice", { date: new Date(job.auto_release_at).toLocaleString() })}</>
             )}
           </p>
         </div>
@@ -217,7 +221,7 @@ function ActiveJobCard({
           className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-teal-600 py-2 text-xs font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
         >
           {isMarking ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-          {isMarking ? "Marking…" : "Mark job complete"}
+          {isMarking ? t("marking") : t("markJobComplete")}
         </button>
       )}
     </div>
@@ -230,6 +234,8 @@ function ActiveJobCard({
 
 export default function ArtisanDashboardPage() {
   const router = useRouter();
+  const t = useTranslations("artisanDashboard");
+  const tc = useTranslations("common");
 
   const [authUser,    setAuthUser]    = useState<User | null>(null);
   const [pricingType, setPricingType] = useState<string | null>(null);
@@ -245,6 +251,10 @@ export default function ArtisanDashboardPage() {
 
   const [availability,         setAvailability]         = useState<string | null>(null);
   const [updatingAvailability, setUpdatingAvailability] = useState(false);
+
+  const [avatarUrl,       setAvatarUrl]       = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError,     setAvatarError]     = useState("");
 
   async function loadDashboard() {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -267,11 +277,12 @@ export default function ArtisanDashboardPage() {
 
     const { data: profile } = await supabase
       .from("artisan_profiles")
-      .select("pricing_type, availability")
+      .select("pricing_type, availability, avatar_url")
       .eq("user_id", user.id)
       .maybeSingle();
     setPricingType(profile?.pricing_type ?? null);
     setAvailability(profile?.availability ?? null);
+    setAvatarUrl(profile?.avatar_url ?? null);
 
     // Fetched via an API route (service role), not the browser client —
     // RLS on `users` only allows SELECT of your own row, which silently
@@ -469,6 +480,52 @@ export default function ArtisanDashboardPage() {
     }
   }
 
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+
+    setAvatarError("");
+
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setAvatarError("Please choose a JPEG, PNG, or WebP image.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError("Image must be smaller than 5MB.");
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+    if (!accessToken) {
+      router.replace("/login");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/artisan/avatar", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: formData,
+      });
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) throw new Error(json.message ?? "Something went wrong.");
+
+      setAvatarUrl(json.avatarUrl);
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut();
     router.push("/login");
@@ -503,27 +560,62 @@ export default function ArtisanDashboardPage() {
         >
           <div className="flex items-center justify-between px-6 py-4 sm:px-8">
             <div className="flex items-center gap-3">
+              <label className="group relative cursor-pointer">
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={avatarUrl}
+                    alt="Your profile picture"
+                    className="h-10 w-10 rounded-full object-cover ring-1 ring-slate-200"
+                  />
+                ) : (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-300">
+                    <UserIcon size={18} />
+                  </div>
+                )}
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                  {uploadingAvatar ? (
+                    <Loader2 size={14} className="animate-spin text-white" />
+                  ) : (
+                    <Pencil size={12} className="text-white" />
+                  )}
+                </div>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleAvatarChange}
+                  disabled={uploadingAvatar}
+                  className="hidden"
+                />
+              </label>
               <div className="flex h-8 w-8 select-none items-center justify-center rounded-md bg-slate-900 text-base font-black leading-none text-[#F5B700]">
                 G
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Skilled services marketplace</p>
-                <p className="text-sm font-bold leading-tight text-slate-900">Artisan Dashboard</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t("brandLabel")}</p>
+                <p className="text-sm font-bold leading-tight text-slate-900">{t("title")}</p>
               </div>
             </div>
             <button onClick={handleSignOut} className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-700">
-              <LogOut size={13} /> Sign out
+              <LogOut size={13} /> {tc("signOut")}
             </button>
           </div>
 
+          {avatarError && (
+            <div className="mx-6 mt-3 flex gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 sm:mx-8">
+              <AlertTriangle size={14} className="mt-0.5 flex-shrink-0 text-red-500" />
+              <p className="text-xs text-red-700">{avatarError}</p>
+            </div>
+          )}
+
           {availability && (
             <div className="flex items-center justify-between border-t border-slate-100 px-6 py-3 sm:px-8">
-              <span className="text-xs font-semibold text-slate-500">Your status</span>
+              <span className="text-xs font-semibold text-slate-500">{t("yourStatus")}</span>
               <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
                 {([
-                  { key: "available", label: "Available", dot: "bg-teal-500" },
-                  { key: "busy",      label: "Busy",       dot: "bg-amber-500" },
-                  { key: "offline",   label: "Offline",    dot: "bg-slate-400" },
+                  { key: "available", label: t("available"), dot: "bg-teal-500" },
+                  { key: "busy",      label: t("busy"),       dot: "bg-amber-500" },
+                  { key: "offline",   label: t("offline"),    dot: "bg-slate-400" },
                 ] as const).map((opt) => (
                   <button
                     key={opt.key}
@@ -542,18 +634,22 @@ export default function ArtisanDashboardPage() {
               </div>
             </div>
           )}
+
+          <div className="border-t border-slate-100 px-6 py-3 sm:px-8">
+            <LanguageSwitcher />
+          </div>
         </div>
 
         <div className="overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-slate-900/5">
           <div className="px-6 pt-6 pb-4 sm:px-8">
             <h1 className="flex items-center gap-2 text-lg font-bold text-slate-900">
               <Briefcase size={18} className="text-teal-600" />
-              Incoming Requests
+              {t("incomingRequests")}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
               {bookings.length === 0
-                ? "You're all caught up — no pending requests right now."
-                : `${bookings.length} request${bookings.length === 1 ? "" : "s"} awaiting your response.`}
+                ? t("noRequests")
+                : t("requestsAwaiting", { count: bookings.length })}
             </p>
           </div>
 
@@ -582,10 +678,10 @@ export default function ArtisanDashboardPage() {
             <div className="px-6 pt-6 pb-4 sm:px-8">
               <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
                 <CheckCircle2 size={18} className="text-teal-600" />
-                Active Jobs
+                {t("activeJobs")}
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                {activeJobs.length} job{activeJobs.length === 1 ? "" : "s"} in progress.
+                {t("jobsInProgress", { count: activeJobs.length })}
               </p>
             </div>
 
