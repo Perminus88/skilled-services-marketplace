@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
+import { useTranslations } from "next-intl";
 import {
   Search, LogOut, User as UserIcon, Phone, Mail,
   Loader2, AlertTriangle, ClipboardList, Briefcase,
   CheckCircle2, Clock, Smartphone,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import LanguageSwitcher from "@/app/_components/LanguageSwitcher";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -40,17 +42,26 @@ type PageStatus = "loading" | "ready" | "error";
 // Sub-components
 // ─────────────────────────────────────────────────────────────────────────────
 
-function statusLabel(status: string): { label: string; color: string } {
+/**
+ * Maps a raw booking status to a translated label + color.
+ * Takes `t` as a parameter (rather than calling useTranslations internally)
+ * since this is a plain function, not a component — it's called from
+ * within BookingCard, which already has its own `t` in scope.
+ */
+function statusLabel(
+  status: string,
+  t: ReturnType<typeof useTranslations<"clientDashboard">>
+): { label: string; color: string } {
   switch (status) {
-    case "requested": return { label: "Awaiting response",  color: "text-amber-700 bg-amber-50" };
-    case "quoted":     return { label: "Quote received",     color: "text-teal-700 bg-teal-50" };
-    case "confirmed":  return { label: "Confirmed",          color: "text-teal-700 bg-teal-50" };
-    case "in_progress":return { label: "In progress",        color: "text-blue-700 bg-blue-50" };
-    case "completed":  return { label: "Completed",          color: "text-slate-600 bg-slate-100" };
-    case "declined":   return { label: "Declined",           color: "text-red-700 bg-red-50" };
-    case "cancelled":  return { label: "Cancelled",          color: "text-slate-500 bg-slate-100" };
-    case "disputed":   return { label: "Disputed",           color: "text-red-700 bg-red-50" };
-    default:           return { label: status,               color: "text-slate-600 bg-slate-100" };
+    case "requested":   return { label: t("status.requested"),   color: "text-amber-700 bg-amber-50" };
+    case "quoted":      return { label: t("status.quoted"),      color: "text-teal-700 bg-teal-50" };
+    case "confirmed":   return { label: t("status.confirmed"),   color: "text-teal-700 bg-teal-50" };
+    case "in_progress": return { label: t("status.in_progress"), color: "text-blue-700 bg-blue-50" };
+    case "completed":   return { label: t("status.completed"),   color: "text-slate-600 bg-slate-100" };
+    case "declined":    return { label: t("status.declined"),    color: "text-red-700 bg-red-50" };
+    case "cancelled":   return { label: t("status.cancelled"),   color: "text-slate-500 bg-slate-100" };
+    case "disputed":    return { label: t("status.disputed"),    color: "text-red-700 bg-red-50" };
+    default:            return { label: status,                  color: "text-slate-600 bg-slate-100" };
   }
 }
 
@@ -75,7 +86,8 @@ function BookingCard({
   onMarkComplete:   (bookingId: string) => void;
   isMarking:        boolean;
 }) {
-  const { label, color } = statusLabel(booking.status);
+  const t = useTranslations("clientDashboard");
+  const { label, color } = statusLabel(booking.status, t);
   const [phone, setPhone] = useState(defaultPhone);
 
   const needsPayment =
@@ -112,7 +124,7 @@ function BookingCard({
           className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-teal-600 py-2 text-xs font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
         >
           <CheckCircle2 size={13} />
-          Accept quote — KES {booking.quoted_price?.toLocaleString()}
+          {t("acceptQuote", { price: booking.quoted_price?.toLocaleString() ?? "" })}
         </button>
       )}
 
@@ -121,18 +133,18 @@ function BookingCard({
           {booking.payment_status === "failed" && (
             <p className="flex items-center gap-1.5 text-xs font-medium text-red-600">
               <Smartphone size={12} />
-              Last attempt didn't go through — try again below.
+              {t("lastAttemptFailed")}
             </p>
           )}
           <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
             <Smartphone size={12} />
-            M-Pesa number to charge
+            {t("mpesaNumberLabel")}
           </label>
           <input
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="07XXXXXXXX"
+            placeholder={t("mpesaPlaceholder")}
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm
                        text-slate-900 placeholder:text-slate-400
                        focus:border-teal-500 focus:outline-none"
@@ -144,7 +156,7 @@ function BookingCard({
                        text-xs font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
           >
             {isPaying ? <Loader2 size={13} className="animate-spin" /> : <Smartphone size={13} />}
-            {isPaying ? "Sending request…" : `Pay Now — KES ${booking.quoted_price?.toLocaleString()}`}
+            {isPaying ? t("sendingRequest") : t("payNow", { price: booking.quoted_price?.toLocaleString() ?? "" })}
           </button>
         </div>
       )}
@@ -153,7 +165,7 @@ function BookingCard({
         <div className="mt-3 flex items-center gap-2 rounded-lg border border-teal-100 bg-teal-50 px-3 py-2.5">
           <Loader2 size={14} className="flex-shrink-0 animate-spin text-teal-600" />
           <p className="text-xs text-teal-700">
-            Check your phone and enter your M-Pesa PIN to complete payment.
+            {t("checkPhonePin")}
           </p>
         </div>
       )}
@@ -165,11 +177,9 @@ function BookingCard({
             {booking.artisan_marked_complete_at ? (
               <>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  {booking.artisanName} says this job is done.
+                  {t("artisanSaysDone", { artisanName: booking.artisanName })}
                   {booking.auto_release_at && (
-                    <> Payment auto-releases on{" "}
-                      {new Date(booking.auto_release_at).toLocaleString()}{" "}
-                      if you don&apos;t respond.</>
+                    <> {t("autoReleaseNotice", { date: new Date(booking.auto_release_at).toLocaleString() })}</>
                   )}
                 </p>
                 <button
@@ -179,7 +189,7 @@ function BookingCard({
                              text-xs font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
                 >
                   {isMarking ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-                  {isMarking ? "Confirming…" : "Confirm complete & release payment"}
+                  {isMarking ? t("confirming") : t("confirmComplete")}
                 </button>
               </>
             ) : (
@@ -190,7 +200,7 @@ function BookingCard({
                            text-xs font-semibold text-teal-700 hover:bg-teal-50 disabled:opacity-60"
               >
                 {isMarking ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-                {isMarking ? "Marking…" : "Mark as complete"}
+                {isMarking ? t("marking") : t("markAsComplete")}
               </button>
             )}
           </div>
@@ -230,6 +240,8 @@ function mapBookings(raw: RawBooking[]): BookingRow[] {
 
 export default function ClientDashboardPage() {
   const router = useRouter();
+  const t = useTranslations("clientDashboard");
+  const tc = useTranslations("common");
 
   const [authUser,     setAuthUser]     = useState<User | null>(null);
   const [profile,      setProfile]      = useState<ClientProfile | null>(null);
@@ -464,7 +476,7 @@ export default function ClientDashboardPage() {
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-3 text-slate-400">
           <Loader2 size={28} className="animate-spin" />
-          <p className="text-sm">Loading your account…</p>
+          <p className="text-sm">{t("loadingAccount")}</p>
         </div>
       </div>
     );
@@ -476,14 +488,14 @@ export default function ClientDashboardPage() {
         <div className="mx-auto w-full max-w-md">
           <div className="rounded-2xl bg-white p-8 text-center shadow-lg ring-1 ring-slate-900/5">
             <AlertTriangle size={36} className="mx-auto mb-4 text-red-400" />
-            <h2 className="text-lg font-bold text-slate-900">Something went wrong</h2>
+            <h2 className="text-lg font-bold text-slate-900">{t("errorTitle")}</h2>
             <p className="mt-2 text-sm text-slate-500 leading-relaxed">{errorMessage}</p>
             <button
               onClick={() => router.push("/login")}
               className="mt-6 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold
                          text-white transition-colors hover:bg-teal-700"
             >
-              Back to sign in
+              {t("backToSignIn")}
             </button>
           </div>
         </div>
@@ -510,10 +522,10 @@ export default function ClientDashboardPage() {
               </div>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  Skilled services marketplace
+                  {t("brandLabel")}
                 </p>
                 <p className="text-sm font-bold leading-tight text-slate-900">
-                  Client Dashboard
+                  {t("title")}
                 </p>
               </div>
             </div>
@@ -523,8 +535,12 @@ export default function ClientDashboardPage() {
                          transition-colors hover:text-slate-700"
             >
               <LogOut size={13} />
-              Sign out
+              {tc("signOut")}
             </button>
+          </div>
+
+          <div className="border-t border-slate-100 px-6 py-3 sm:px-8">
+            <LanguageSwitcher />
           </div>
         </div>
 
@@ -532,11 +548,11 @@ export default function ClientDashboardPage() {
 
           <div className="px-6 pt-6 pb-5 sm:px-8">
             <p className="text-sm text-slate-500">
-              Welcome back,{" "}
+              {t("welcomeBack")}{" "}
               <span className="font-semibold text-slate-700">{firstName}</span>
             </p>
             <h1 className="mt-0.5 text-xl font-bold text-slate-900">
-              Your Account
+              {t("yourAccount")}
             </h1>
 
             <div className="mt-5 space-y-3">
@@ -576,13 +592,13 @@ export default function ClientDashboardPage() {
                          hover:bg-teal-700"
             >
               <Search size={16} />
-              Find an artisan
+              {t("findAnArtisan")}
             </a>
           </div>
 
           <div className="border-t border-slate-100 px-6 py-5 sm:px-8">
             <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              Your Bookings
+              {t("yourBookings")}
             </p>
 
             {actionError && (
@@ -610,9 +626,9 @@ export default function ClientDashboardPage() {
               <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed
                               border-slate-200 py-8 text-center">
                 <ClipboardList size={22} className="text-slate-300" />
-                <p className="text-sm text-slate-400">No bookings yet</p>
+                <p className="text-sm text-slate-400">{t("noBookingsYet")}</p>
                 <p className="text-xs text-slate-400">
-                  Once you book an artisan, it&apos;ll show up here.
+                  {t("noBookingsHint")}
                 </p>
               </div>
             ) : (
