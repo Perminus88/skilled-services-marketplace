@@ -3,7 +3,7 @@
 import { useState, type FormEvent, type ChangeEvent } from "react";
 import {
   User, Phone, Mail, Lock, AlertCircle, AlertTriangle,
-  CheckCircle2, Loader2,
+  CheckCircle2, Loader2, Wrench,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
@@ -228,10 +228,10 @@ export default function ClientSignupPage() {
           <div className="px-6 pt-7 pb-2 sm:px-8">
             <div className="mb-5 flex items-center gap-2.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-[#F5B700] font-black text-base leading-none select-none">
-                G
+                <Wrench size={16} />
               </div>
               <span className="text-sm font-bold text-slate-900 tracking-tight">
-                Skilled services marketplace
+                Huduma Connect
               </span>
             </div>
             <h1 className="text-2xl font-bold text-slate-900 leading-tight">

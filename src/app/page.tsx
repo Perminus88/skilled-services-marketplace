@@ -10,8 +10,33 @@ import { HeroSearch } from "./_components/HeroSearch";
 import { Reveal } from "./_components/Reveal";
 import { RadarGraphic } from "./_components/RadarGraphic";
 
+function LandingArtisanPreview({ categories }: { categories: Array<{ id: string; name: string; slug: string }> }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {categories.map((category) => {
+        const Icon = CATEGORY_ICONS[category.slug] ?? Wrench;
+
+        return (
+          <div
+            key={category.id}
+            className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+              <Icon size={20} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">{category.name}</p>
+              <p className="text-xs text-slate-500">Top-rated nearby</p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export const metadata: Metadata = {
-  title: "Skilled Services Marketplace — Verified artisans, near you",
+  title: "Huduma Connect — Verified artisans, near you",
   description:
     "Find verified electricians, plumbers, painters and more near you. Pay safely through M-Pesa, held until the job's confirmed done.",
 };
@@ -62,10 +87,10 @@ export default async function LandingPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-[#F5B700] font-black text-base leading-none select-none">
-              G
+              <Wrench size={16} />
             </div>
             <span className="text-sm font-bold tracking-tight text-white">
-              Skilled services marketplace
+              Huduma Connect
             </span>
           </div>
           <div className="flex items-center gap-5">
@@ -121,7 +146,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* ── Popular categories (live) ──────────────────────────────────── */}
+      {/* ── Popular artisans near you (live) ─────────────────────────────── */}
       {categories.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
           <Reveal>
@@ -134,23 +159,7 @@ export default async function LandingPage() {
           </Reveal>
 
           <Reveal className="mt-8">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {categories.map((c) => {
-                const Icon = CATEGORY_ICONS[c.slug] ?? Wrench;
-                return (
-                  <Link
-                    key={c.id}
-                    href={`/discovery?category=${c.slug}`}
-                    className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 transition-colors hover:border-teal-300 hover:bg-teal-50/50"
-                  >
-                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700 group-hover:bg-teal-100">
-                      <Icon size={16} />
-                    </div>
-                    <span className="text-sm font-semibold text-slate-700">{c.name}</span>
-                  </Link>
-                );
-              })}
-            </div>
+            <LandingArtisanPreview categories={categories} />
           </Reveal>
         </section>
       )}
@@ -258,10 +267,10 @@ export default async function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6">
           <div className="flex items-center gap-2.5">
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-900 text-[#F5B700] font-black text-sm leading-none select-none">
-              G
+              <Wrench size={14} />
             </div>
             <span className="text-xs font-semibold text-slate-500">
-              Skilled services marketplace
+              Huduma Connect
             </span>
           </div>
           <div className="flex items-center gap-6 text-xs font-medium text-slate-500">

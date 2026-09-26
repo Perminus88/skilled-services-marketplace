@@ -20,10 +20,10 @@ export default function SignupChoicePage() {
 
         <div className="mb-8 flex items-center justify-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-[#F5B700] font-black text-base leading-none select-none">
-            G
+            <Wrench size={16} />
           </div>
           <span className="text-sm font-bold text-slate-900 tracking-tight">
-            Skilled services marketplace
+            Huduma Connect
           </span>
         </div>
 

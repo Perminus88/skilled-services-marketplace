@@ -10,7 +10,7 @@
   },
   "artisanDashboard": {
     "title": "Artisan Dashboard",
-    "brandLabel": "Skilled services marketplace",
+    "brandLabel": "Huduma Connect",
     "yourStatus": "Your status",
     "available": "Available",
     "busy": "Busy",
@@ -33,7 +33,7 @@
   },
   "clientDashboard": {
     "title": "Client Dashboard",
-    "brandLabel": "Skilled services marketplace",
+    "brandLabel": "Huduma Connect",
     "loadingAccount": "Loading your account…",
     "errorTitle": "Something went wrong",
     "backToSignIn": "Back to sign in",

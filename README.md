@@ -1,4 +1,4 @@
-# Skilled Services Marketplace
+# Huduma Connect
 
 A marketplace connecting clients with verified skilled-trade artisans (plumbers, electricians, cleaners, etc.) in Kenya. Built with Next.js 14 App Router, Supabase (Postgres + Auth + PostGIS), TypeScript, and Tailwind CSS.
 

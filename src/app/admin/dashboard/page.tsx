@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   LogOut, ShieldCheck, Loader2, AlertTriangle, Star,
-  Briefcase, Phone, CheckCircle2, XCircle, Clock, Banknote,
+  Briefcase, Phone, CheckCircle2, XCircle, Clock, Banknote, Wrench,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -447,10 +447,10 @@ export default function AdminDashboardPage() {
           <div className="flex items-center justify-between px-6 py-4 sm:px-8">
             <div className="flex items-center gap-3">
               <div className="flex h-8 w-8 select-none items-center justify-center rounded-md bg-slate-900 text-base font-black leading-none text-[#F5B700]">
-                G
+                <Wrench size={16} />
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Skilled services marketplace</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Huduma Connect</p>
                 <p className="text-sm font-bold leading-tight text-slate-900">Admin Dashboard</p>
               </div>
             </div>

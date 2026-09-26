@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import {
   Search, LogOut, User as UserIcon, Phone, Mail,
   Loader2, AlertTriangle, ClipboardList, Briefcase,
-  CheckCircle2, Clock, Smartphone,
+  CheckCircle2, Clock, Smartphone, Wrench,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import LanguageSwitcher from "@/app/_components/LanguageSwitcher";
@@ -518,7 +518,7 @@ export default function ClientDashboardPage() {
             <div className="flex items-center gap-3">
               <div className="flex h-8 w-8 select-none items-center justify-center rounded-md
                               bg-slate-900 text-base font-black leading-none text-[#F5B700]">
-                G
+                <Wrench size={16} />
               </div>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">

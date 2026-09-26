@@ -4,7 +4,7 @@ import { useState, useEffect, type ReactNode, type ChangeEvent, type FormEvent }
 import {
   User, Phone, Briefcase, Award, DollarSign,
   ChevronDown, FileText, AlertCircle, AlertTriangle,
-  CheckCircle2, Loader2, Tag, Mail, Lock, MapPin, RefreshCw,
+  CheckCircle2, Loader2, Tag, Mail, Lock, MapPin, RefreshCw, Wrench,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -882,9 +882,9 @@ export default function ArtisanOnboardingPage() {
           <div className="px-6 pt-7 pb-2 sm:px-8">
             <div className="mb-5 flex items-center gap-2.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-[#F5B700] font-black text-base leading-none select-none">
-                G
+                <Wrench size={16} />
               </div>
-              <span className="text-sm font-bold text-slate-900 tracking-tight">Skilled services marketplace</span>
+              <span className="text-sm font-bold text-slate-900 tracking-tight">Huduma Connect</span>
               <span className="ml-auto rounded-sm bg-teal-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-teal-700">
                 New Application
               </span>
@@ -1300,7 +1300,7 @@ export default function ArtisanOnboardingPage() {
                   </button>
 
                   <p className="mt-4 text-center text-[11px] text-slate-400 leading-relaxed">
-                    By submitting you agree to Skilled services marketplace&apos;s{" "}
+                    By submitting you agree to Huduma Connect&apos;s{" "}
                     <a href="#" className="underline hover:text-slate-600 transition-colors">
                       Terms of Service
                     </a>{" "}

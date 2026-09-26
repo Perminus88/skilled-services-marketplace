@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, AlertTriangle, Loader2 } from "lucide-react";
+import { Mail, Lock, AlertTriangle, Loader2, Wrench } from "lucide-react";
 // Assumes src/lib/supabase.ts exports: export const supabase = createClient(url, anonKey)
 import { supabase } from "@/lib/supabase";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
@@ -147,9 +147,9 @@ export default function LoginPage() {
             <div className="mb-5 flex items-center gap-2.5">
               <div className="flex h-8 w-8 select-none items-center justify-center rounded-md
                               bg-slate-900 text-base font-black leading-none text-[#F5B700]">
-                G
+                <Wrench size={16} />
               </div>
-              <span className="text-sm font-bold tracking-tight text-slate-900">Skilled services marketplace</span>
+              <span className="text-sm font-bold tracking-tight text-slate-900">Huduma Connect</span>
             </div>
 
             <h1 className="text-2xl font-bold leading-tight text-slate-900">

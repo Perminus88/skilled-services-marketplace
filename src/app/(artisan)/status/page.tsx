@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import {
   BadgeCheck, Clock, XCircle, LogOut, Briefcase,
-  User as UserIcon, Loader2, AlertTriangle, ChevronRight,
+  User as UserIcon, Loader2, AlertTriangle, ChevronRight, Wrench
 } from "lucide-react";
 // Assumes src/lib/supabase.ts exports: export const supabase = createClient(url, anonKey)
 import { supabase } from "@/lib/supabase";
@@ -251,11 +251,11 @@ export default function StatusPage() {
             <div className="flex items-center gap-3">
               <div className="flex h-8 w-8 select-none items-center justify-center rounded-md
                               bg-slate-900 text-base font-black leading-none text-[#F5B700]">
-                G
+                <Wrench size={16} />
               </div>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  Skilled services marketplace
+                  Huduma Connect
                 </p>
                 <p className="text-sm font-bold leading-tight text-slate-900">
                   Artisan Portal
@@ -410,7 +410,7 @@ export default function StatusPage() {
               </p>
               <div className="rounded-lg border border-teal-200 bg-teal-50 px-4 py-3">
                 <p className="text-sm leading-relaxed text-teal-700">
-                  Your profile is visible to clients nearby. Open the Skilled services marketplace app and
+                  Your profile is visible to clients nearby. Open the Huduma Connect app and
                   toggle your availability to start receiving job requests.
                 </p>
               </div>
@@ -430,11 +430,11 @@ export default function StatusPage() {
                   re-applying.
                 </p>
                 <a
-                  href="mailto:support@Skilled services marketplace.co.ke"
+                  href="mailto:support@Hudumaconnect.co.ke"
                   className="mt-2 inline-flex items-center gap-1 text-xs font-semibold
                              text-red-700 underline transition-colors hover:text-red-900"
                 >
-                  support@Skilled services marketplace.co.ke <ChevronRight size={11} />
+                  support@Hudumaconnect.co.ke <ChevronRight size={11} />
                 </a>
               </div>
             </div>

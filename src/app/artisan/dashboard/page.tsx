@@ -7,7 +7,7 @@ import type { User } from "@supabase/supabase-js";
 import { useTranslations } from "next-intl";
 import {
   LogOut, Briefcase, Loader2, AlertTriangle, MapPin,
-  Clock, CheckCircle2, XCircle, DollarSign, User as UserIcon, Pencil,
+  Clock, CheckCircle2, XCircle, DollarSign, User as UserIcon, Pencil, Wrench,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import LanguageSwitcher from "@/app/_components/LanguageSwitcher";
@@ -589,7 +589,7 @@ export default function ArtisanDashboardPage() {
                 />
               </label>
               <div className="flex h-8 w-8 select-none items-center justify-center rounded-md bg-slate-900 text-base font-black leading-none text-[#F5B700]">
-                G
+                <Briefcase size={16} />
               </div>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t("brandLabel")}</p>
