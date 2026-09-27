@@ -571,6 +571,7 @@ export default function ArtisanOnboardingPage() {
   const [fieldErrors,          setFieldErrors]         = useState<FormErrors>({});
   const [status,               setStatus]              = useState<SubmitStatus>("idle");
   const [apiErrorMessage,      setApiErrorMessage]     = useState<string>("");
+  const [agreedToTerms,        setAgreedToTerms]       = useState<boolean>(false);
   const [resolvedCategoryName, setResolvedCategoryName] = useState<string>("");
   const [registeredUserId,     setRegisteredUserId]    = useState<string>("");
   const [avatarFile,    setAvatarFile]    = useState<File | null>(null);
@@ -692,6 +693,11 @@ export default function ArtisanOnboardingPage() {
   // ── Form submission ────────────────────────────────────────────────────────
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+      if (!agreedToTerms) {
+        setApiErrorMessage("Please agree to the Terms & Conditions to continue.");
+        setStatus("error");
+        return;
+      }
 
     // Step 1 — client-side validation (mirrors backend validateBody, plus
     // email/password/confirmPassword checks for the signup step)
@@ -1282,7 +1288,7 @@ export default function ArtisanOnboardingPage() {
                 <div className="mt-7">
                   <button
                     type="submit"
-                    disabled={status === "loading"}
+                    disabled={status === "loading" || !agreedToTerms}
                     className="flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600
                                py-3 text-sm font-semibold text-white shadow-sm transition-colors
                                hover:bg-teal-700 focus-visible:outline-none focus-visible:ring-2
@@ -1299,16 +1305,25 @@ export default function ArtisanOnboardingPage() {
                     )}
                   </button>
 
-                  <p className="mt-4 text-center text-[11px] text-slate-400 leading-relaxed">
-                    By submitting you agree to Huduma Connect&apos;s{" "}
-                    <a href="#" className="underline hover:text-slate-600 transition-colors">
-                      Terms of Service
-                    </a>{" "}
-                    and{" "}
-                    <a href="#" className="underline hover:text-slate-600 transition-colors">
-                      Privacy Policy
-                    </a>.
-                  </p>
+                  <label className="mt-4 flex items-start gap-2.5 text-[13px] text-slate-500">
+                    <input
+                      type="checkbox"
+                      checked={agreedToTerms}
+                      onChange={(e) => setAgreedToTerms(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                    />
+                    <span>
+                      I agree to Huduma Connect&apos;s{" "}
+                      <a
+                        href="/terms.html"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-teal-600 underline hover:text-teal-700"
+                      >
+                        Terms &amp; Conditions
+                      </a>
+                    </span>
+                  </label>
                 </div>
               </form>
             )}

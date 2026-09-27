@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terms & Conditions — Huduma Connect</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+/* ── TOKENS ─────────────────────────────────────────────────────── */
+:root {
+  --navy:      #0D1B2A;
+  --navy-mid:  #162436;
+  --amber:     #F5A623;
+  --amber-dim: #E8941A;
+  --amber-bg:  #FEF7EC;
+  --amber-border: #F5D898;
+  --ink:       #1A1A2E;
+  --body:      #2C3E50;
+  --muted:     #6B7A8D;
+  --rule:      #E2E8F0;
+  --bg:        #F8F9FB;
+  --white:     #FFFFFF;
+  --danger:    #C0392B;
+  --green:     #1A7F4B;
+  --sidebar-w: 280px;
+}
+
+/* ── RESET ───────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--body);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── TOP BAR ─────────────────────────────────────────────────────── */
+.topbar {
+  background: var(--navy);
+  padding: 0 40px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+}
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.brand-icon {
+  width: 32px; height: 32px;
+  background: var(--amber);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.brand-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: 0.2px;
+}
+.topbar-label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.5px;
+}
+
+/* ── LAYOUT ──────────────────────────────────────────────────────── */
+.layout {
+  display: flex;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  gap: 0;
+}
+
+/* ── SIDEBAR ─────────────────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  padding: 40px 0 40px 0;
+}
+.sidebar-inner {
+  position: sticky;
+  top: 80px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  padding-right: 24px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+}
+.sidebar-inner::-webkit-scrollbar { width: 4px; }
+.sidebar-inner::-webkit-scrollbar-track { background: transparent; }
+.sidebar-inner::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 2px; }
+
+.toc-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule);
+}
+.toc-list { list-style: none; }
+.toc-list li { margin-bottom: 2px; }
+.toc-list a {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 13px;
+  color: var(--muted);
+  transition: background 0.15s, color 0.15s;
+  line-height: 1.4;
+}
+.toc-list a:hover {
+  background: rgba(245,166,35,0.08);
+  color: var(--ink);
+}
+.toc-list a.active {
+  background: rgba(245,166,35,0.12);
+  color: var(--amber-dim);
+  font-weight: 600;
+}
+.toc-num {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--amber);
+  font-variant-numeric: tabular-nums;
+  min-width: 18px;
+  flex-shrink: 0;
+}
+
+/* ── DIVIDER ─────────────────────────────────────────────────────── */
+.sidebar-divider {
+  width: 1px;
+  background: var(--rule);
+  margin: 0 0 0 0;
+  flex-shrink: 0;
+}
+
+/* ── MAIN CONTENT ────────────────────────────────────────────────── */
+.main {
+  flex: 1;
+  min-width: 0;
+  padding: 48px 0 80px 48px;
+}
+
+/* ── HERO ────────────────────────────────────────────────────────── */
+.doc-hero {
+  margin-bottom: 48px;
+  padding-bottom: 32px;
+  border-bottom: 2px solid var(--navy);
+}
+.doc-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 10px;
+}
+.doc-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--navy);
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+  margin-bottom: 14px;
+}
+.doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.doc-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.doc-meta-item strong { color: var(--ink); }
+.doc-intro {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--body);
+  max-width: 680px;
+  margin-bottom: 20px;
+}
+.doc-governing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--navy);
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+}
+
+/* ── MOBILE TOC ──────────────────────────────────────────────────── */
+.mobile-toc {
+  display: none;
+  background: var(--white);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 32px;
+}
+.mobile-toc-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.mobile-toc-list { display: none; }
+.mobile-toc-list.open { display: block; }
+.mobile-toc-list a {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 1px solid var(--rule);
+}
+.mobile-toc-list a:last-child { border-bottom: none; }
+
+/* ── SECTION ─────────────────────────────────────────────────────── */
+.tc-section {
+  margin-bottom: 52px;
+  scroll-margin-top: 80px;
+}
+.section-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.section-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--amber);
+  background: var(--navy);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.section-title-wrap { flex: 1; }
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+
+/* Plain-language summary box — the signature element */
+.plain-box {
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-border);
+  border-left: 4px solid var(--amber);
+  border-radius: 0 8px 8px 0;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.plain-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+.plain-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #7A5C00;
+}
+.plain-text strong { color: #5A3E00; }
+
+/* Section body */
+.section-body h3 {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 22px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--rule);
+}
+.section-body p {
+  font-size: 14.5px;
+  line-height: 1.75;
+  color: var(--body);
+  margin-bottom: 14px;
+}
+.section-body ul, .section-body ol {
+  padding-left: 20px;
+  margin-bottom: 14px;
+}
+.section-body li {
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: var(--body);
+  margin-bottom: 6px;
+}
+.section-body strong { color: var(--ink); }
+
+/* Highlight boxes */
+.notice-box {
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin: 18px 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.notice-box.warning {
+  background: #FFF5F5;
+  border: 1px solid #FECACA;
+  color: #7F1D1D;
+}
+.notice-box.info {
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  color: #1E3A5F;
+}
+.notice-box.success {
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  color: #14532D;
+}
+.notice-icon { font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+
+/* Rates table */
+.rates-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+  font-size: 13.5px;
+}
+.rates-table th {
+  background: var(--navy);
+  color: var(--white);
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 10px 14px;
+  text-align: left;
+}
+.rates-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+  line-height: 1.5;
+}
+.rates-table tr:nth-child(even) td { background: #F8F9FB; }
+.rates-table tr:last-child td { border-bottom: none; }
+.rate-amt {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  color: var(--amber-dim);
+}
+
+/* Section divider */
+.section-rule {
+  height: 1px;
+  background: var(--rule);
+  margin: 52px 0;
+}
+
+/* ── CONTACT CARD ────────────────────────────────────────────────── */
+.contact-card {
+  background: var(--navy);
+  border-radius: 12px;
+  padding: 28px 32px;
+  margin-top: 40px;
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.contact-card-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 6px;
+}
+.contact-card-sub {
+  font-size: 13px;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 18px;
+}
+.contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.contact-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--amber);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  min-width: 80px;
+  margin-top: 2px;
+}
+.contact-val {
+  font-size: 13.5px;
+  color: rgba(255,255,255,0.85);
+}
+
+/* ── FOOTER ──────────────────────────────────────────────────────── */
+.doc-footer {
+  background: var(--navy);
+  color: rgba(255,255,255,0.5);
+  text-align: center;
+  padding: 24px;
+  font-size: 12px;
+  margin-top: 60px;
+}
+.doc-footer strong { color: var(--amber); }
+
+/* ── RESPONSIVE ──────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .sidebar, .sidebar-divider { display: none; }
+  .mobile-toc { display: block; }
+  .main { padding: 32px 0 60px 0; }
+  .layout { padding: 0 16px; }
+  .topbar { padding: 0 16px; }
+  .doc-title { font-size: 26px; }
+  .contact-card { padding: 20px; }
+}
+@media (max-width: 480px) {
+  .doc-title { font-size: 22px; }
+  .rates-table { font-size: 12px; }
+  .rates-table th, .rates-table td { padding: 8px 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<nav class="topbar">
+  <a class="topbar-brand" href="#">
+    <div class="brand-icon">🔧</div>
+    <span class="brand-name">Huduma Connect</span>
+  </a>
+  <span class="topbar-label">Terms &amp; Conditions</span>
+</nav>
+
+<div class="layout">
+
+  <!-- SIDEBAR TOC -->
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+      <div class="toc-title">Contents</div>
+      <ul class="toc-list" id="toc">
+        <li><a href="#s1"><span class="toc-num">1</span> Definitions</a></li>
+        <li><a href="#s2"><span class="toc-num">2</span> Acceptance of Terms</a></li>
+        <li><a href="#s3"><span class="toc-num">3</span> Nature of the Platform</a></li>
+        <li><a href="#s4"><span class="toc-num">4</span> Eligibility &amp; Registration</a></li>
+        <li><a href="#s5"><span class="toc-num">5</span> Artisan Obligations</a></li>
+        <li><a href="#s6"><span class="toc-num">6</span> Client Obligations</a></li>
+        <li><a href="#s7"><span class="toc-num">7</span> Booking &amp; Service Agreement</a></li>
+        <li><a href="#s8"><span class="toc-num">8</span> Payments, Fees &amp; Commission</a></li>
+        <li><a href="#s9"><span class="toc-num">9</span> Escrow &amp; M-Pesa Policy</a></li>
+        <li><a href="#s10"><span class="toc-num">10</span> Cancellations &amp; Refunds</a></li>
+        <li><a href="#s11"><span class="toc-num">11</span> Disputes &amp; Resolution</a></li>
+        <li><a href="#s12"><span class="toc-num">12</span> Ratings &amp; Reviews</a></li>
+        <li><a href="#s13"><span class="toc-num">13</span> Verification &amp; Identity</a></li>
+        <li><a href="#s14"><span class="toc-num">14</span> Prohibited Conduct</a></li>
+        <li><a href="#s15"><span class="toc-num">15</span> Intellectual Property</a></li>
+        <li><a href="#s16"><span class="toc-num">16</span> Privacy &amp; Data Protection</a></li>
+        <li><a href="#s17"><span class="toc-num">17</span> Limitation of Liability</a></li>
+        <li><a href="#s18"><span class="toc-num">18</span> Indemnification</a></li>
+        <li><a href="#s19"><span class="toc-num">19</span> Account Suspension &amp; Termination</a></li>
+        <li><a href="#s20"><span class="toc-num">20</span> Amendments</a></li>
+        <li><a href="#s21"><span class="toc-num">21</span> Governing Law</a></li>
+        <li><a href="#s22"><span class="toc-num">22</span> Contact &amp; Complaints</a></li>
+      </ul>
+    </div>
+  </aside>
+
+  <div class="sidebar-divider"></div>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- HERO -->
+    <div class="doc-hero">
+      <div class="doc-eyebrow">Legal Document</div>
+      <h1 class="doc-title">Terms &amp; Conditions</h1>
+      <div class="doc-meta">
+        <div class="doc-meta-item">📅 <strong>Effective Date:</strong> November 11, 2026</div>
+        <div class="doc-meta-item">🔄 <strong>Last Updated:</strong> October 3, 2026</div>
+        <div class="doc-meta-item">📍 <strong>Jurisdiction:</strong> Republic of Kenya</div>
+      </div>
+      <p class="doc-intro">
+        These Terms and Conditions ("Terms") govern your access to and use of the Huduma Connect platform,
+        including the mobile application, website, and all related services (collectively, the "Platform").
+        Please read them carefully. By registering, browsing, or using the Platform in any way,
+        you confirm that you have read, understood, and agreed to be bound by these Terms.
+      </p>
+      <span class="doc-governing">🇰🇪 Governed by the Laws of Kenya</span>
+    </div>
+
+    <!-- MOBILE TOC -->
+    <div class="mobile-toc">
+      <div class="mobile-toc-title" onclick="toggleMobileToc()">
+        📋 Table of Contents <span id="toc-arrow">▼</span>
+      </div>
+      <div class="mobile-toc-list" id="mobile-toc-list">
+        <a href="#s1"><span class="toc-num">1</span> Definitions</a>
+        <a href="#s2"><span class="toc-num">2</span> Acceptance of Terms</a>
+        <a href="#s3"><span class="toc-num">3</span> Nature of the Platform</a>
+        <a href="#s4"><span class="toc-num">4</span> Eligibility &amp; Registration</a>
+        <a href="#s5"><span class="toc-num">5</span> Artisan Obligations</a>
+        <a href="#s6"><span class="toc-num">6</span> Client Obligations</a>
+        <a href="#s7"><span class="toc-num">7</span> Booking &amp; Service Agreement</a>
+        <a href="#s8"><span class="toc-num">8</span> Payments, Fees &amp; Commission</a>
+        <a href="#s9"><span class="toc-num">9</span> Escrow &amp; M-Pesa Policy</a>
+        <a href="#s10"><span class="toc-num">10</span> Cancellations &amp; Refunds</a>
+        <a href="#s11"><span class="toc-num">11</span> Disputes &amp; Resolution</a>
+        <a href="#s12"><span class="toc-num">12</span> Ratings &amp; Reviews</a>
+        <a href="#s13"><span class="toc-num">13</span> Verification &amp; Identity</a>
+        <a href="#s14"><span class="toc-num">14</span> Prohibited Conduct</a>
+        <a href="#s15"><span class="toc-num">15</span> Intellectual Property</a>
+        <a href="#s16"><span class="toc-num">16</span> Privacy &amp; Data Protection</a>
+        <a href="#s17"><span class="toc-num">17</span> Limitation of Liability</a>
+        <a href="#s18"><span class="toc-num">18</span> Indemnification</a>
+        <a href="#s19"><span class="toc-num">19</span> Account Suspension &amp; Termination</a>
+        <a href="#s20"><span class="toc-num">20</span> Amendments</a>
+        <a href="#s21"><span class="toc-num">21</span> Governing Law</a>
+        <a href="#s22"><span class="toc-num">22</span> Contact &amp; Complaints</a>
+      </div>
+    </div>
+
+    <!-- ── SECTION 1 ─────────────────────────────────────────────── -->
+    <section class="tc-section" id="s1">
+      <div class="section-header">
+        <div class="section-num">1</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Definitions</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> These are the key words used throughout this document and what they mean.</div>
+      </div>
+      <div class="section-body">
+        <p>In these Terms, the following words and phrases have the meanings set out below:</p>
+        <ul>
+          <li><strong>"Platform"</strong> means the Huduma Connect mobile application, website (hudumaconnect.co.ke or similar), and all associated services, tools, and content.</li>
+          <li><strong>"Company", "We", "Us", or "Our"</strong> means Huduma Connect, a business registered under the laws of Kenya.</li>
+          <li><strong>"User"</strong> means any person who accesses or uses the Platform, whether as a Client or Artisan.</li>
+          <li><strong>"Client"</strong> means any registered user who uses the Platform to search for, book, and pay for services provided by Artisans.</li>
+          <li><strong>"Artisan"</strong> means any registered user who offers skilled services through the Platform, including but not limited to plumbers, electricians, house cleaners, gardeners, carpenters, painters, and handypersons.</li>
+          <li><strong>"Service"</strong> means any task, job, or skilled labour offered by an Artisan and booked by a Client through the Platform.</li>
+          <li><strong>"Booking"</strong> means a confirmed request by a Client for a specific Service from a specific Artisan, made through the Platform.</li>
+          <li><strong>"Commission"</strong> means the fee retained by the Company from each completed transaction, as specified in Section 8.</li>
+          <li><strong>"Escrow"</strong> means the temporary holding of a Client's payment by the Platform pending successful completion of a Service, as described in Section 9.</li>
+          <li><strong>"M-Pesa"</strong> means the mobile money payment service operated by Safaricom PLC in Kenya.</li>
+          <li><strong>"Pro Subscription"</strong> means the optional paid monthly subscription available to Artisans for enhanced visibility and platform features.</li>
+          <li><strong>"Verified Badge"</strong> means the visual indicator displayed on an Artisan's profile confirming that the Company has verified their national identity document and, where applicable, their trade certification.</li>
+          <li><strong>"Dispute"</strong> means any disagreement between a Client and an Artisan arising from a Booking or Service.</li>
+          <li><strong>"Content"</strong> means any text, images, reviews, profile information, portfolios, or other material uploaded to or generated on the Platform.</li>
+          <li><strong>"KES"</strong> means Kenyan Shilling, the official currency of the Republic of Kenya.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ── SECTION 2 ─────────────────────────────────────────────── -->
+    <section class="tc-section" id="s2">
+      <div class="section-header">
+        <div class="section-num">2</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Acceptance of Terms</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> By creating an account or using the app or website in any way, you are legally agreeing to these rules. If you disagree with any part, do not use the platform.</div>
+      </div>
+      <div class="section-body">
+        <p>By accessing, downloading, installing, registering on, or using the Platform in any manner, you acknowledge that you have read, understood, and agree to be bound by these Terms and our Privacy Policy, which is incorporated herein by reference.</p>
+        <p>These Terms constitute a legally binding agreement between you and the Company. If you are entering into these Terms on behalf of a business or other legal entity, you represent that you have the authority to bind that entity to these Terms.</p>
+        <div class="notice-box warning">
+          <span class="notice-icon">⚠️</span>
+          <div><strong>Important:</strong> If you do not agree to these Terms, you must immediately stop using the Platform and delete your account. Continued use of the Platform after any update to these Terms constitutes acceptance of the updated Terms.</div>
+        </div>
+        <p>These Terms apply to all Users of the Platform regardless of whether you access it via the mobile application or the website.</p>
+      </div>
+    </section>
+
+    <!-- ── SECTION 3 ─────────────────────────────────────────────── -->
+    <section class="tc-section" id="s3">
+      <div class="section-header">
+        <div class="section-num">3</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Nature of the Platform</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> Huduma Connect is a marketplace — we connect clients with artisans. We do not employ artisans, and we are not responsible for the quality of their work. Artisans are independent workers.</div>
+      </div>
+      <div class="section-body">
+        <p>Huduma Connect operates as an online marketplace and technology platform that facilitates connections between Clients seeking household and skilled labour services and independent Artisans willing to provide such services. The Company does not itself provide any of the services listed or booked through the Platform.</p>
+        <h3>Independent Contractor Relationship</h3>
+        <p>Artisans are independent contractors and are not employees, agents, partners, or representatives of the Company. The Company does not direct, supervise, or control the work performed by Artisans. The relationship between a Client and an Artisan, once a Booking is confirmed, is a private contractual relationship between those two parties.</p>
+        <p>The Company makes no warranties regarding the skill, quality, safety, timeliness, legality, or any other aspect of the services provided by Artisans. Any contract for services is made between the Client and the Artisan directly, with the Platform serving as a facilitator.</p>
+        <h3>No Employment Relationship</h3>
+        <p>Nothing in these Terms or in the use of the Platform shall be construed to create an employment relationship, agency, partnership, joint venture, or franchise between the Company and any Artisan. Artisans are solely responsible for paying their own taxes, statutory deductions, and insurance obligations as required under Kenyan law.</p>
+        <div class="notice-box info">
+          <span class="notice-icon">ℹ️</span>
+          <div>The Platform's role is to provide tools for discovery, booking, communication, and payment processing. Disputes regarding the quality or performance of a Service are governed by Section 11 of these Terms.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SECTION 4 ─────────────────────────────────────────────── -->
+    <section class="tc-section" id="s4">
+      <div class="section-header">
+        <div class="section-num">4</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Eligibility &amp; Registration</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> You must be at least 18 years old and legally able to work in Kenya to use this platform. You must give us accurate information when signing up.</div>
+      </div>
+      <div class="section-body">
+        <h3>Age and Legal Capacity</h3>
+        <p>You must be at least eighteen (18) years of age to register or use the Platform in any capacity. By creating an account, you represent and warrant that you are at least 18 years old and have the legal capacity to enter into a binding agreement under Kenyan law.</p>
+        <h3>Artisan Eligibility</h3>
+        <p>To register as an Artisan, you must:</p>
+        <ul>
+          <li>Be at least 18 years of age;</li>
+          <li>Hold a valid Kenyan National Identity Card (ID), passport, or other government-issued identification acceptable to the Company;</li>
+          <li>Have the right to work and provide services in Kenya;</li>
+          <li>Possess the skills, tools, and qualifications necessary to perform the services you advertise on the Platform; and</li>
+          <li>Maintain a valid M-Pesa account registered in your name for the purpose of receiving payments.</li>
+        </ul>
+        <h3>Account Registration</h3>
+        <p>To use the Platform, you must create an account by providing accurate, current, and complete information including your full legal name, phone number, location, and any other details requested during registration. You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account.</p>
+        <p>You agree to notify the Company immediately at the contact address provided in Section 22 if you become aware of any unauthorised use of your account. The Company is not liable for any loss arising from your failure to keep your account credentials secure.</p>
+        <h3>One Account Per Person</h3>
+        <p>Each person may maintain only one account per role (one Client account and/or one Artisan account). Creating duplicate or false accounts is a violation of these Terms and may result in immediate suspension.</p>
+      </div>
+    </section>
+
+    <!-- ── SECTION 5 ─────────────────────────────────────────────── -->
+    <section class="tc-section" id="s5">
+      <div class="section-header">
+        <div class="section-num">5</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Artisan Obligations</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> As an artisan, you must show up on time, do quality work, be honest in your pricing, and not try to arrange payments outside the app to avoid our commission.</div>
+      </div>
+      <div class="section-body">
+        <h3>Professional Standards</h3>
+        <p>As an Artisan registered on the Platform, you agree to:</p>
+        <ul>
+          <li>Provide all Services with reasonable skill, care, and diligence consistent with industry standards and any relevant professional qualifications you hold;</li>
+          <li>Arrive at the agreed location at the agreed time, or provide reasonable advance notice and an opportunity to reschedule if you cannot;</li>
+          <li>Treat all Clients with professionalism, courtesy, and respect at all times;</li>
+          <li>Keep your profile information, service offerings, pricing, and availability status accurate and up to date;</li>
+          <li>Only offer and perform services that you are genuinely qualified and equipped to provide;</li>
+          <li>Comply with all applicable Kenyan laws and regulations in the performance of your services, including health and safety standards;</li>
+          <li>Carry any tools, equipment, and materials necessary for your offered services, unless otherwise agreed with the Client in advance.</li>
+        </ul>
+        <h3>Accurate Representation</h3>
+        <p>You must not misrepresent your skills, qualifications, experience, or identity on your profile. False claims — including fabricated certifications, fake work portfolio photos, or inflated experience — constitute fraud and will result in immediate account termination and may be reported to the relevant Kenyan authorities.</p>
+        <h3>Off-Platform Transactions</h3>
+        <p>Deliberately circumventing the Platform's payment system to avoid commission fees is strictly prohibited. This includes requesting or accepting cash payments for jobs that were booked through the Platform without declaring them, providing personal contact information before a Booking is confirmed for the purpose of taking the job off-platform, or any other scheme intended to deprive the Company of its lawful commission.</p>
+        <div class="notice-box warning">
+          <span class="notice-icon">⚠️</span>
+          <div><strong>Commission on all Platform-originated jobs:</strong> Commission is owed on every job that originated through the Platform, whether payment is made in-app or in cash. Artisans who make cash-job commission declarations late or fail to declare them may have amounts deducted from their in-app wallet or future payouts.</div>
+        </div>
+        <h3>Pro Subscription Obligations</h3>
+        <p>Artisans who subscribe to the Pro tier must maintain accurate profile information. The Company reserves the right to remove the Verified Pro badge and downgrade a subscription without refund if an Artisan is found to have violated these Terms.</p>
+      </div>
+    </section>
+
+    <!-- ── SECTION 6 ─────────────────────────────────────────────── -->
+    <section class="tc-section" id="s6">
+      <div class="section-header">
+        <div class="section-num">6</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Client Obligations</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> As a client, you must be honest about what work you need done, provide a safe environment for the artisan, pay for confirmed bookings, and not abuse the review system.</div>
+      </div>
+      <div class="section-body">
+        <p>As a Client using the Platform, you agree to:</p>
+        <ul>
+          <li>Provide accurate and complete descriptions of the services you require, including relevant photos, measurements, or other information the Artisan needs to quote and prepare appropriately;</li>
+          <li>Ensure that the location at which services are to be performed is safe, accessible, and lawfully accessible by the Artisan;</li>
+          <li>Be present or arrange access for the Artisan at the agreed time and location, or give advance notice of any change;</li>
+          <li>Pay for all confirmed Bookings in accordance with the agreed price and the payment terms in Section 8 and Section 9;</li>
+          <li>Confirm job completion promptly and honestly through the Platform once the Service is done to the agreed standard;</li>
+          <li>Not engage Artisans discovered through the Platform for services outside the Platform during the period of your active account and for six (6) months after account closure, without paying the applicable introduction fee;</li>
+          <li>Treat Artisans with courtesy and respect; and</li>
+          <li>Not request services that are illegal, dangerous, or outside the Platform's listed service categories.</li>
+        </ul>
+        <div class="notice-box info">
+          <span class="notice-icon">ℹ️</span>
+          <div>Clients who repeatedly cancel bookings without notice, refuse to pay for completed work, or abuse the dispute system may have their accounts suspended.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SECTION 7 ─────────────────────────────────────────────── -->
+    <section class="tc-section" id="s7">
+      <div class="section-header">
+        <div class="section-num">7</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Booking &amp; Service Agreement</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> A booking is a contract between you and the artisan. The artisan accepts, the client pays into escrow, and the job is on. Changes to the scope of work must be agreed and re-priced before the artisan starts.</div>
+      </div>
+      <div class="section-body">
+        <h3>How a Booking is Formed</h3>
+        <p>A Booking is formed when: (a) a Client submits a service request through the Platform; (b) an Artisan accepts the request or the Client accepts the Artisan's custom quote; and (c) the Client completes payment into escrow as described in Section 9. A confirmed Booking constitutes a binding service agreement between the Client and the Artisan.</p>
+        <h3>Scope of Work</h3>
+        <p>The scope of work is determined by the details provided by the Client at the time of Booking and any custom quote provided by the Artisan. Any material change to the scope of work after a Booking is confirmed must be agreed between the Client and Artisan through the in-app chat, and may require a revised quote and supplemental payment before additional work commences.</p>
+        <h3>The Company's Role</h3>
+        <p>The Company is not a party to the service agreement between Client and Artisan. The Company's role is limited to facilitating the Booking, holding payment in Escrow, and providing dispute resolution services as described in Section 11.</p>
+        <h3>Service Categories</h3>
+        <p>The Platform currently facilitates bookings in the following service categories, which may be updated from time to time:</p>
+        <ul>
+          <li>Plumbing and pipe work</li>
+          <li>Electrical installation and repair</li>
+          <li>House cleaning and domestic services</li>
+          <li>Gardening and landscaping</li>
+          <li>Carpentry and furniture repair</li>
+          <li>Painting and decorating</li>
+          <li>General handyperson and home maintenance</li>
+          <li>Tiling and masonry</li>
+          <li>Appliance installation and repair</li>
+          <li>Any other categories added by the Company and listed on the Platform.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ── SECTION 8 ─────────────────────────────────────────────── -->
+    <section class="tc-section" id="s8">
+      <div class="section-header">
+        <div class="section-num">8</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Payments, Fees &amp; Commission</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> Artisans pay 13% commission on each completed job. Clients pay a small booking fee. These amounts are taken automatically — artisans receive the rest directly to M-Pesa.</div>
+      </div>
+      <div class="section-body">
+        <h3>Fee Schedule</h3>
+        <table class="rates-table">
+          <thead>
+            <tr><th>Fee Type</th><th>Who Pays</th><th>Amount</th><th>When Charged</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Platform Commission</td>
+              <td>Artisan</td>
+              <td><span class="rate-amt">13%</span> of job value</td>
+              <td>Automatically deducted from escrow on job completion</td>
+            </tr>
+            <tr>
+              <td>Client Booking Fee</td>
+              <td>Client</td>
+              <td><span class="rate-amt">KES 75</span> flat per booking</td>
+              <td>Added to invoice at checkout; collected with job payment</td>
+            </tr>
+            <tr>
+              <td>Pro Artisan Subscription</td>
+              <td>Artisan</td>
+              <td><span class="rate-amt">KES 400/month</span></td>
+              <td>Monthly; auto-renewed unless cancelled</td>
+            </tr>
+            <tr>
+              <td>Cash-Job Commission</td>
+              <td>Artisan</td>
+              <td><span class="rate-amt">13%</span> of declared job value</td>
+              <td>Deducted from in-app wallet or next in-app payout</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>The Company reserves the right to adjust its fee structure from time to time. Any changes will be communicated to affected Users at least fourteen (14) days before taking effect. Continued use of the Platform after notice of a fee change constitutes acceptance of the new rates.</p>
+        <h3>Artisan Payout</h3>
+        <p>Upon successful completion of a Service and confirmation by the Client (or automatic release after the dispute window expires), the Company will process the Artisan's payout to their registered M-Pesa number within twenty-four (24) hours during normal business days. The payout amount equals the agreed job price minus the applicable Commission.</p>
+        <h3>Taxes</h3>
+        <p>Each User is solely responsible for determining and fulfilling their own tax obligations under Kenyan law, including but not limited to income tax and withholding tax. The Company does not withhold taxes on behalf of Artisans. The Company will comply with any reporting obligations imposed by the Kenya Revenue Authority (KRA) as required by applicable law.</p>
+      </div>
+    </section>
+
+    <!-- ── SECTION 9 ─────────────────────────────────────────────── -->
+    <section class="tc-section" id="s9">
+      <div class="section-header">
+        <div class="section-num">9</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Escrow &amp; M-Pesa Payment Policy</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> When you book, your M-Pesa payment is held safely by the platform. The artisan only receives it after you confirm the job is done — this protects both of you.</div>
+      </div>
+      <div class="section-body">
+        <h3>Payment at Booking</h3>
+        <p>When a Client confirms a Booking, the total amount due (job price plus the client booking fee) must be paid via M-Pesa STK Push through the Platform. Payments by card (Visa/Mastercard) are also accepted where available. The Booking is not confirmed until payment is successfully received by the Platform's escrow account.</p>
+        <h3>Escrow Holding Period</h3>
+        <p>Funds paid by the Client are held in escrow by the Company and are not released to the Artisan until one of the following occurs:</p>
+        <ul>
+          <li>The Client confirms through the Platform that the Service has been completed satisfactorily; or</li>
+          <li>Forty-eight (48) hours have passed since the Artisan marked the job as complete, and the Client has not raised a Dispute or confirmed non-completion; or</li>
+          <li>A Dispute is resolved in favour of the Artisan by the Company's dispute resolution process.</li>
+        </ul>
+        <h3>Artisan Payout</h3>
+        <p>Payouts are made to the Artisan's registered M-Pesa number after the release conditions above are met. Commission is deducted automatically before payout. The Artisan's in-app wallet reflects the status of all pending and completed payouts.</p>
+        <h3>Failed or Incomplete Payments</h3>
+        <p>If an M-Pesa payment fails or is reversed for any reason, the Booking will not be confirmed. The Company is not responsible for delays or failures in M-Pesa transactions caused by Safaricom or the Artisan's mobile network.</p>
+        <div class="notice-box success">
+          <span class="notice-icon">🛡️</span>
+          <div><strong>Your payment is protected:</strong> Funds are never released to an Artisan before you have had the opportunity to confirm satisfactory completion or raise a dispute. This applies to all in-app payments.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SECTION 10 ────────────────────────────────────────────── -->
+    <section class="tc-section" id="s10">
+      <div class="section-header">
+        <div class="section-num">10</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Cancellations &amp; Refunds</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> Cancel early and you get a full refund. Cancel late and a fee applies. If the artisan cancels on you, you always get a full refund.</div>
+      </div>
+      <div class="section-body">
+        <h3>Client Cancellation Policy</h3>
+        <table class="rates-table">
+          <thead>
+            <tr><th>Cancellation Timing</th><th>Refund to Client</th><th>Compensation to Artisan</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>More than 24 hours before scheduled job</td>
+              <td><span class="rate-amt">100% refund</span> (booking fee non-refundable)</td>
+              <td>None</td>
+            </tr>
+            <tr>
+              <td>Between 2 and 24 hours before scheduled job</td>
+              <td><span class="rate-amt">50% refund</span> of job price</td>
+              <td>50% of job price as cancellation fee</td>
+            </tr>
+            <tr>
+              <td>Less than 2 hours before or after artisan arrives</td>
+              <td><span class="rate-amt">No refund</span></td>
+              <td>Full job price (less commission)</td>
+            </tr>
+          </tbody>
+        </table>
+        <h3>Artisan Cancellation Policy</h3>
+        <p>If an Artisan cancels a confirmed Booking, the Client will receive a full refund of both the job price and the booking fee. Artisans who repeatedly cancel confirmed Bookings may have their accounts suspended or the Verified badge removed. The Company may apply a cancellation penalty to Artisans with high cancellation rates.</p>
+        <h3>Refund Processing</h3>
+        <p>Approved refunds will be processed to the original payment method (M-Pesa or card) within three (3) to five (5) business days. M-Pesa reversal timelines may vary subject to Safaricom's processing schedule.</p>
+        <h3>Pro Subscription Refunds</h3>
+        <p>Pro Subscription fees are non-refundable once a billing cycle has commenced. Cancellation of a Pro Subscription takes effect at the end of the current billing period.</p>
+      </div>
+    </section>
+
+    <!-- ── SECTION 11 ────────────────────────────────────────────── -->
+    <section class="tc-section" id="s11">
+      <div class="section-header">
+        <div class="section-num">11</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Disputes &amp; Resolution</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> If there's a problem with a job, raise it through the app within 48 hours. We will mediate. If we cannot resolve it, you can go to a Kenyan court — but please try us first.</div>
+      </div>
+      <div class="section-body">
+        <h3>Raising a Dispute</h3>
+        <p>A Client may raise a Dispute within forty-eight (48) hours of the Artisan marking a job as complete. Disputes raised after this window may not be eligible for escrow intervention. To raise a Dispute, the Client must use the in-app dispute function, provide a description of the issue, and where possible, submit supporting evidence such as photographs or chat records.</p>
+        <h3>Dispute Resolution Process</h3>
+        <p>On receipt of a Dispute, the Company will:</p>
+        <ol>
+          <li>Freeze the escrow payment and notify both the Client and Artisan within twenty-four (24) hours;</li>
+          <li>Request responses and evidence from both parties within three (3) business days;</li>
+          <li>Review the evidence and make a determination within five (5) business days of receiving all responses; and</li>
+          <li>Communicate the outcome to both parties and release or refund the escrowed funds accordingly.</li>
+        </ol>
+        <h3>Company's Decision</h3>
+        <p>The Company's dispute determination is final and binding for the purposes of releasing escrow funds. The Company acts as a neutral mediator and does not guarantee any particular outcome. The Company's decision on escrow does not affect either party's right to pursue legal remedies through the Kenyan courts.</p>
+        <h3>Good Faith Requirement</h3>
+        <p>Both parties are required to engage in the dispute process in good faith. Abuse of the dispute system — including raising false disputes, withholding payment without legitimate reason, or providing fabricated evidence — may result in account suspension.</p>
+        <div class="notice-box info">
+          <span class="notice-icon">ℹ️</span>
+          <div>The Company is not a judicial body. For disputes involving significant financial amounts or potential criminal conduct, Users are encouraged to seek independent legal advice and, where appropriate, involve the relevant Kenyan authorities including the Directorate of Criminal Investigations (DCI).</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SECTION 12 ────────────────────────────────────────────── -->
+    <section class="tc-section" id="s12">
+      <div class="section-header">
+        <div class="section-num">12</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Ratings &amp; Reviews</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> Both clients and artisans can rate each other after a job. Reviews must be honest. Fake or malicious reviews are not allowed and will be removed.</div>
+      </div>
+      <div class="section-body">
+        <p>After completion of a Service, both Clients and Artisans have the opportunity to submit a rating (1–5 stars) and a written review of their experience. Ratings and reviews contribute to the overall reputation scores displayed on user profiles.</p>
+        <h3>Review Standards</h3>
+        <p>All reviews must be honest, based on genuine personal experience, and comply with these Terms. The following are prohibited:</p>
+        <ul>
+          <li>Reviews that contain false or misleading information;</li>
+          <li>Reviews motivated by personal grievances unrelated to the Service performed;</li>
+          <li>Coordinated or incentivised reviews (e.g. offering discounts or gifts in exchange for positive reviews);</li>
+          <li>Reviews containing hate speech, defamatory content, or personal attacks;</li>
+          <li>Reviews submitted by Users who did not participate in the relevant Booking.</li>
+        </ul>
+        <h3>Reporting and Removal</h3>
+        <p>Any User may report a review they believe violates these standards. The Company reserves the right to remove reviews that violate these Terms. The Company is not obligated to remove negative reviews that are honest and based on genuine experience.</p>
+        <h3>Two-Way Rating</h3>
+        <p>Artisans may also rate Clients following a completed job. Clients with consistently poor ratings may find it harder to attract Artisans. This system is designed to protect Artisans from abusive or difficult clients.</p>
+      </div>
+    </section>
+
+    <!-- ── SECTION 13 ────────────────────────────────────────────── -->
+    <section class="tc-section" id="s13">
+      <div class="section-header">
+        <div class="section-num">13</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Verification &amp; Identity</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> We verify artisan identities using their National ID. The Verified Badge means we've confirmed who they are — it does not guarantee their work quality. Providing fake documents is a criminal offence.</div>
+      </div>
+      <div class="section-body">
+        <h3>Identity Verification</h3>
+        <p>The Company requires Artisans to submit a copy of their Kenyan National Identity Card or other acceptable government-issued identification during registration. Identity verification is conducted by the Company or its authorised third-party verification partners.</p>
+        <h3>What the Verified Badge Means</h3>
+        <p>The Verified Badge on an Artisan's profile confirms that the Company has (a) verified the Artisan's identity document and (b) matched the name and photo to the individual registered. It does not constitute an endorsement, guarantee of skill, background clearance, or criminal record check unless the profile specifically states otherwise.</p>
+        <h3>Skill Certification</h3>
+        <p>Where an Artisan uploads trade certifications (for example, certification from the National Industrial Training Authority (NITA) or similar body), the Company will display a Skill Certification indicator on the profile. The Company will make reasonable efforts to verify the authenticity of uploaded certifications but cannot guarantee that all certifications have been formally validated.</p>
+        <h3>Provision of False Documents</h3>
+        <p>Uploading false, forged, or altered identity documents or certifications is a criminal offence under Kenyan law and will result in immediate and permanent account termination. The Company may report such conduct to the relevant Kenyan authorities including the DCI and the National Registration Bureau.</p>
+      </div>
+    </section>
+
+    <!-- ── SECTION 14 ────────────────────────────────────────────── -->
+    <section class="tc-section" id="s14">
+      <div class="section-header">
+        <div class="section-num">14</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Prohibited Conduct</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> A list of things you must never do on this platform. Violations can result in a permanent ban and legal action.</div>
+      </div>
+      <div class="section-body">
+        <p>The following conduct is strictly prohibited on the Platform. Violation may result in immediate account suspension, permanent ban, and/or referral to law enforcement:</p>
+        <ul>
+          <li>Providing false, misleading, or fraudulent information at registration or at any time during Platform use;</li>
+          <li>Impersonating any person or entity, or falsely claiming affiliation with any person or entity;</li>
+          <li>Using the Platform to solicit or perform illegal services;</li>
+          <li>Harassing, threatening, abusing, or intimidating any other User;</li>
+          <li>Engaging in discriminatory conduct on the basis of gender, ethnicity, religion, disability, or any other protected characteristic;</li>
+          <li>Soliciting or accepting payments outside the Platform for services originating from the Platform, with intent to evade commission;</li>
+          <li>Creating multiple accounts to manipulate ratings, reviews, or search rankings;</li>
+          <li>Using automated tools, bots, or scripts to access, scrape, or interact with the Platform;</li>
+          <li>Attempting to gain unauthorised access to any other User's account or to the Company's systems;</li>
+          <li>Uploading or transmitting malware, viruses, or any harmful code;</li>
+          <li>Using the Platform to send unsolicited commercial messages (spam);</li>
+          <li>Reproducing, distributing, or exploiting Platform content or data for commercial purposes without the Company's written permission;</li>
+          <li>Engaging in any conduct that undermines the integrity, safety, or reputation of the Platform or its Users.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ── SECTION 15 ────────────────────────────────────────────── -->
+    <section class="tc-section" id="s15">
+      <div class="section-header">
+        <div class="section-num">15</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Intellectual Property</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> The app, website, logo, and all platform content belong to Huduma Connect. Your profile photos and content belong to you, but you give us permission to display them on the platform.</div>
+      </div>
+      <div class="section-body">
+        <h3>Company's Intellectual Property</h3>
+        <p>All rights, title, and interest in and to the Platform, including but not limited to the software, design, code, interface, logo, trademarks, trade names, service marks, and all proprietary content created by the Company, are owned by or licensed to the Company. No licence to use Company intellectual property is granted to Users except as strictly necessary to use the Platform in accordance with these Terms.</p>
+        <h3>User Content Licence</h3>
+        <p>By uploading Content to the Platform — including profile photos, portfolio images, service descriptions, and reviews — you grant the Company a non-exclusive, royalty-free, worldwide, perpetual licence to use, reproduce, display, and distribute that Content on the Platform and in the Company's marketing materials, for the purpose of operating and promoting the Platform.</p>
+        <p>You represent and warrant that you own or have the necessary rights to all Content you upload, and that the Content does not infringe any third party's intellectual property rights or any applicable law.</p>
+        <h3>Feedback</h3>
+        <p>Any feedback, suggestions, or ideas you provide about the Platform may be used by the Company without restriction or compensation to you.</p>
+      </div>
+    </section>
+
+    <!-- ── SECTION 16 ────────────────────────────────────────────── -->
+    <section class="tc-section" id="s16">
+      <div class="section-header">
+        <div class="section-num">16</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Privacy &amp; Data Protection</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> We collect and use your personal data to operate the platform. We comply with the Kenya Data Protection Act 2019. We do not sell your data to third parties. See our Privacy Policy for full details.</div>
+      </div>
+      <div class="section-body">
+        <p>The Company collects, processes, stores, and uses personal data in accordance with the Kenya Data Protection Act, 2019 (No. 24 of 2019) and its subsidiary regulations. By using the Platform, you consent to the collection and use of your personal information as described in the Company's Privacy Policy, which forms part of these Terms.</p>
+        <h3>Data We Collect</h3>
+        <p>We collect information necessary to operate the Platform, including:</p>
+        <ul>
+          <li>Identification information (name, national ID details, profile photo);</li>
+          <li>Contact information (phone number, location);</li>
+          <li>Payment information (M-Pesa number, transaction records — card details are processed by our payment gateway and not stored by us);</li>
+          <li>Location data (used to show nearby Artisans and for navigation);</li>
+          <li>Usage data (how you interact with the Platform);</li>
+          <li>Communications (in-app chat records, for dispute resolution purposes).</li>
+        </ul>
+        <h3>Data Sharing</h3>
+        <p>We do not sell your personal data. We share data only with: (a) the other party in a confirmed Booking (Client to Artisan and vice versa, to the extent needed to complete the Service); (b) our trusted service providers (payment processors, hosting providers, verification partners) under strict confidentiality obligations; and (c) Kenyan regulatory or law enforcement authorities where required by law.</p>
+        <h3>Your Rights</h3>
+        <p>Under the Kenya Data Protection Act, you have the right to access, correct, and in certain circumstances delete the personal data we hold about you. To exercise these rights, contact us using the details in Section 22.</p>
+        <h3>Data Retention</h3>
+        <p>We retain your data for as long as your account is active and for a reasonable period thereafter as required for legal and regulatory compliance, including tax record obligations under the Income Tax Act (Cap. 470).</p>
+      </div>
+    </section>
+
+    <!-- ── SECTION 17 ────────────────────────────────────────────── -->
+    <section class="tc-section" id="s17">
+      <div class="section-header">
+        <div class="section-num">17</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Limitation of Liability</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> We are a marketplace, not a contractor. If an artisan does poor work or causes damage, we are not legally responsible for that. Our financial liability to you is capped at what you paid us in fees — not the full job cost.</div>
+      </div>
+      <div class="section-body">
+        <div class="notice-box warning">
+          <span class="notice-icon">⚠️</span>
+          <div><strong>Please read this section carefully.</strong> It limits the Company's legal liability to you.</div>
+        </div>
+        <p>To the fullest extent permitted by applicable Kenyan law, the Company shall not be liable for:</p>
+        <ul>
+          <li>The quality, safety, legality, or any other aspect of the services performed by Artisans;</li>
+          <li>Any property damage, personal injury, or other loss arising from the performance of a Service by an Artisan;</li>
+          <li>Any acts or omissions of Artisans or Clients;</li>
+          <li>Loss of profits, revenue, data, goodwill, or other indirect or consequential losses arising from use of the Platform;</li>
+          <li>Platform downtime, outages, or technical failures beyond our reasonable control;</li>
+          <li>Losses arising from M-Pesa service interruptions, Safaricom network failures, or delays by third-party payment processors;</li>
+          <li>Unauthorised access to or alteration of your account by a third party, where you have failed to keep your credentials secure.</li>
+        </ul>
+        <h3>Cap on Liability</h3>
+        <p>Where the Company is found to be liable to you for any reason under these Terms, its total aggregate liability shall not exceed the total Platform fees (Commission and Booking Fees, excluding the job price paid to the Artisan) paid by or on behalf of you to the Company in the three (3) months preceding the event giving rise to the claim.</p>
+        <h3>Artisan Insurance</h3>
+        <p>Artisans are strongly encouraged to obtain appropriate professional indemnity and public liability insurance for their trade. The Company does not provide or arrange insurance on behalf of Artisans.</p>
+      </div>
+    </section>
+
+    <!-- ── SECTION 18 ────────────────────────────────────────────── -->
+    <section class="tc-section" id="s18">
+      <div class="section-header">
+        <div class="section-num">18</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Indemnification</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> If you break these rules and it costs us money in legal fees or damages, you agree to compensate us for that cost.</div>
+      </div>
+      <div class="section-body">
+        <p>You agree to indemnify, defend, and hold harmless the Company and its directors, officers, employees, and agents from and against any claims, liabilities, damages, losses, costs, and expenses (including reasonable legal fees) arising out of or relating to:</p>
+        <ul>
+          <li>Your use of the Platform or Services;</li>
+          <li>Your violation of these Terms;</li>
+          <li>Your violation of any applicable law or regulation;</li>
+          <li>Your Content uploaded to the Platform;</li>
+          <li>Your interactions with any other User, including any services performed or received;</li>
+          <li>Any claim by a third party arising from the services you provided or received through the Platform.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ── SECTION 19 ────────────────────────────────────────────── -->
+    <section class="tc-section" id="s19">
+      <div class="section-header">
+        <div class="section-num">19</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Account Suspension &amp; Termination</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> We can suspend or close your account if you break these rules. You can also close your own account at any time. Outstanding balances are settled before closure.</div>
+      </div>
+      <div class="section-body">
+        <h3>Suspension by the Company</h3>
+        <p>The Company reserves the right to suspend or terminate your account at any time, with or without prior notice, if:</p>
+        <ul>
+          <li>You breach any provision of these Terms;</li>
+          <li>We have reasonable grounds to believe your account is being used fraudulently or in bad faith;</li>
+          <li>You have received repeated complaints from other Users that the Company considers valid;</li>
+          <li>You provide false identity or qualification documents;</li>
+          <li>Continued access to your account poses a risk to other Users, the Company, or the public; or</li>
+          <li>Required to do so by applicable law or a court order.</li>
+        </ul>
+        <h3>Effect of Termination</h3>
+        <p>Upon termination, your access to the Platform ceases. Any Bookings in progress will be managed at the Company's discretion, taking into account the fairness to both parties. Outstanding escrow balances will be released or refunded in accordance with these Terms. Any outstanding Commission owed by an Artisan at the time of termination remains payable.</p>
+        <h3>Account Closure by User</h3>
+        <p>You may close your account at any time by contacting the Company through the details in Section 22 or through the in-app account settings. Account closure does not extinguish any obligations that arose prior to closure, including outstanding Commission, payments for confirmed Bookings, or Disputes in progress.</p>
+        <h3>Data After Closure</h3>
+        <p>Following account closure, your personal data will be retained for such period as is required by applicable Kenyan law (including the Income Tax Act and the Data Protection Act) before being deleted or anonymised in accordance with our Privacy Policy.</p>
+      </div>
+    </section>
+
+    <!-- ── SECTION 20 ────────────────────────────────────────────── -->
+    <section class="tc-section" id="s20">
+      <div class="section-header">
+        <div class="section-num">20</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Amendments to These Terms</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> We may update these terms as the business grows. We'll notify you before changes take effect. If you keep using the platform after the notice period, you've accepted the new terms.</div>
+      </div>
+      <div class="section-body">
+        <p>The Company reserves the right to amend these Terms at any time. When we make material changes, we will notify you by:</p>
+        <ul>
+          <li>Displaying a prominent notice in the Platform;</li>
+          <li>Sending a notification to your registered phone number or email; and/or</li>
+          <li>Posting the updated Terms on the Platform with a revised "Last Updated" date.</li>
+        </ul>
+        <p>Changes will take effect fourteen (14) days after notification for existing Users, unless the change is required by law or relates to a new feature (in which case it may take effect immediately). Your continued use of the Platform after the effective date of any amendment constitutes your acceptance of the revised Terms.</p>
+        <p>If you do not accept the amended Terms, you must stop using the Platform and close your account before the changes take effect.</p>
+      </div>
+    </section>
+
+    <!-- ── SECTION 21 ────────────────────────────────────────────── -->
+    <section class="tc-section" id="s21">
+      <div class="section-header">
+        <div class="section-num">21</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Governing Law &amp; Jurisdiction</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> These terms are governed by Kenyan law. If there's a legal dispute, it will be handled in Kenyan courts — the preferred venue is Nairobi.</div>
+      </div>
+      <div class="section-body">
+        <p>These Terms and any dispute or claim arising out of or in connection with them (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of the Republic of Kenya.</p>
+        <p>The parties agree to submit to the exclusive jurisdiction of the courts of Kenya. The preferred venue for legal proceedings is the High Court of Kenya at Nairobi, unless the nature and amount of the claim make a subordinate court more appropriate.</p>
+        <h3>Alternative Dispute Resolution</h3>
+        <p>Before commencing formal legal proceedings, both parties agree to attempt to resolve any dispute through good-faith negotiation, followed, if necessary, by mediation under the auspices of the Nairobi Centre for International Arbitration (NCIA) or such other mutually agreed mediator. This clause does not prevent either party from seeking urgent injunctive relief from a court.</p>
+        <h3>Applicable Legislation</h3>
+        <p>These Terms are subject to, among others, the following Kenyan legislation where applicable:</p>
+        <ul>
+          <li>The Law of Contract Act (Cap. 23)</li>
+          <li>The Consumer Protection Act, 2012 (No. 46 of 2012)</li>
+          <li>The Data Protection Act, 2019 (No. 24 of 2019)</li>
+          <li>The Computer Misuse and Cybercrimes Act, 2018 (No. 5 of 2018)</li>
+          <li>The Income Tax Act (Cap. 470)</li>
+          <li>The Business Registration Service Act, 2015</li>
+          <li>The National Payment System Act, 2011</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ── SECTION 22 ────────────────────────────────────────────── -->
+    <section class="tc-section" id="s22">
+      <div class="section-header">
+        <div class="section-num">22</div>
+        <div class="section-title-wrap">
+          <h2 class="section-title">Contact &amp; Complaints</h2>
+        </div>
+      </div>
+      <div class="plain-box">
+        <span class="plain-icon">💡</span>
+        <div class="plain-text"><strong>Plain language:</strong> Got a question, complaint, or dispute? Here's how to reach us. We aim to respond within 2 business days.</div>
+      </div>
+      <div class="section-body">
+        <p>If you have any questions about these Terms, wish to exercise your data rights, or need to report a complaint or dispute, please contact the Company using the details below. We aim to acknowledge all communications within two (2) business days.</p>
+        <div class="contact-card">
+          <div>
+            <div class="contact-card-title">Huduma Connect</div>
+            <div class="contact-card-sub">We're here to help — reach us through any of these channels</div>
+            <div class="contact-item">
+              <span class="contact-label">Email</span>
+              <span class="contact-val">support@hudumaconnect.co.ke</span>
+            </div>
+            <div class="contact-item">
+              <span class="contact-label">WhatsApp</span>
+              <span class="contact-val">+254 756 362 417</span>
+            </div>
+            <div class="contact-item">
+              <span class="contact-label">In-App</span>
+              <span class="contact-val">Help & Support → Contact Us</span>
+            </div>
+            <div class="contact-item">
+              <span class="contact-label">Hours</span>
+              <span class="contact-val">Monday – Friday, 8:00 AM – 6:00 PM EAT</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-rule"></div>
+
+    <div style="background:#F8F9FB;border:1px solid #E2E8F0;border-radius:10px;padding:20px 24px;font-size:13px;line-height:1.7;color:#6B7A8D;">
+      <strong style="color:#0D1B2A;display:block;margin-bottom:6px;">⚖️ Legal Notice</strong>
+      These Terms and Conditions were drafted to reflect the operational model of Huduma Connect as of the effective date above.
+      They are intended to be read alongside the Huduma Connect Privacy Policy.
+      The Company strongly recommends that these Terms be reviewed by a qualified Kenyan legal practitioner before the Platform goes live, to ensure full compliance with current applicable laws and regulations, including those specific to the National Payment System Act and Consumer Protection Act requirements.
+      These Terms do not constitute legal advice.
+    </div>
+
+  </main>
+</div>
+
+<footer class="doc-footer">
+  &copy; <span id="year"></span> <strong>Huduma Connect</strong>. All rights reserved. &nbsp;·&nbsp;
+  Nairobi, Kenya &nbsp;·&nbsp; Governed by the Laws of Kenya
+</footer>
+
+<script>
+document.getElementById('year').textContent = new Date().getFullYear();
+
+/* Mobile TOC toggle */
+function toggleMobileToc() {
+  const list = document.getElementById('mobile-toc-list');
+  const arrow = document.getElementById('toc-arrow');
+  const open = list.classList.toggle('open');
+  arrow.textContent = open ? '▲' : '▼';
+}
+
+/* Active section highlight in sidebar TOC */
+const sections = document.querySelectorAll('.tc-section');
+const tocLinks = document.querySelectorAll('#toc a');
+
+function onScroll() {
+  let current = '';
+  sections.forEach(sec => {
+    const top = sec.getBoundingClientRect().top;
+    if (top <= 100) current = sec.id;
+  });
+  tocLinks.forEach(link => {
+    link.classList.toggle('active', link.getAttribute('href') === '#' + current);
+  });
+}
+
+window.addEventListener('scroll', onScroll, { passive: true });
+onScroll();
+</script>
+
+</body>
+</html>

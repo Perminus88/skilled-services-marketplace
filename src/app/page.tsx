@@ -58,19 +58,32 @@ const CATEGORY_ICONS: Record<string, typeof Wrench> = {
   mover:           Truck,
   tailor:          Scissors,
 };
-
 async function getCategories() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    console.error("[landing] Missing Supabase env vars", {
+      hasUrl: !!url,
+      hasKey: !!key,
+    });
+    return [];
+  }
+
+  const supabase = createClient(url, key);
+
   const { data, error } = await supabase
     .from("categories")
     .select("id, name, slug")
     .order("name", { ascending: true });
 
   if (error) {
-    console.error("[landing] categories fetch failed:", error);
+    console.error("[landing] categories fetch failed:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
     return [];
   }
   return data ?? [];
@@ -279,6 +292,9 @@ export default async function LandingPage() {
             </Link>
             <Link href="/signup" className="hover:text-slate-700">Join as an artisan</Link>
             <Link href="/login" className="hover:text-slate-700">Sign in</Link>
+            <a href="/terms.html" target="_blank" className="hover:text-slate-700">
+             Terms & Conditions
+            </a>
           </div>
         </div>
       </footer>

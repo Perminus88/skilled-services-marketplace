@@ -135,6 +135,7 @@ export default function ClientSignupPage() {
   const [fieldErrors,     setFieldErrors]     = useState<FormErrors>({});
   const [status,          setStatus]          = useState<SubmitStatus>("idle");
   const [apiErrorMessage, setApiErrorMessage] = useState<string>("");
+  const [agreedToTerms,   setAgreedToTerms]   = useState<boolean>(false);
 
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
@@ -146,6 +147,11 @@ export default function ClientSignupPage() {
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!agreedToTerms) {
+      setApiErrorMessage("Please agree to the Terms & Conditions to continue.");
+      setStatus("error");
+      return;
+    }
 
     const errors = validate(values);
     if (Object.keys(errors).length > 0) {
@@ -352,13 +358,33 @@ export default function ClientSignupPage() {
                         autoComplete="new-password"
                         error={fieldErrors.confirmPassword}
                       />
-                    </Field>
+                                        </Field>
+
+                    <label className="flex items-start gap-2.5 pt-1 text-sm text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={agreedToTerms}
+                        onChange={(e) => setAgreedToTerms(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                      />
+                      <span>
+                        I agree to Huduma Connect&apos;s{" "}
+                        <a
+                          href="/terms.html"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-teal-600 underline hover:text-teal-700"
+                        >
+                          Terms &amp; Conditions
+                        </a>
+                      </span>
+                    </label>
 
                   </fieldset>
 
                   <button
                     type="submit"
-                    disabled={status === "loading"}
+                    disabled={status === "loading" || !agreedToTerms}
                     className="mt-7 flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600
                                py-3 text-sm font-semibold text-white shadow-sm transition-colors
                                hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-70"
