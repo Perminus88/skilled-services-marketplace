@@ -90,18 +90,19 @@ export async function POST(
 
   // ── 4. Client marking complete ────────────────────────────────────────────
   if (role === "client") {
-    if (booking.client_marked_complete_at) {
-      return NextResponse.json({ message: "You've already marked this complete." }, { status: 409 });
-    }
+    // If a previous attempt saved the timestamp but finalizeBooking failed,
+    // skip the write and just retry the finalize. A fully completed booking
+    // never reaches here: step 3 already rejects it as 'completed'.
+    if (!booking.client_marked_complete_at) {
+      const { error: updateError } = await supabase
+        .from("bookings")
+        .update({ client_marked_complete_at: new Date().toISOString() })
+        .eq("id", bookingId);
 
-    const { error: updateError } = await supabase
-      .from("bookings")
-      .update({ client_marked_complete_at: new Date().toISOString() })
-      .eq("id", bookingId);
-
-    if (updateError) {
-      console.error("BOOKING ERROR LOG: failed to set client_marked_complete_at:", updateError);
-      return NextResponse.json({ message: "Failed to update booking." }, { status: 500 });
+      if (updateError) {
+        console.error("BOOKING ERROR LOG: failed to set client_marked_complete_at:", updateError);
+        return NextResponse.json({ message: "Failed to update booking." }, { status: 500 });
+      }
     }
 
     // Client confirming is always an instant finalize — whether they're the
