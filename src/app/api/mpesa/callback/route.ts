@@ -141,6 +141,9 @@ export async function POST(req: NextRequest) {
     .from("bookings")
     .update({
       payment_status:       "held",
+      // Activates the previously-unused 'in_progress' status — this is
+      // the moment the job officially starts, now that payment is secured.
+      status:               "in_progress",
       mpesa_receipt_number: receiptNumber ? String(receiptNumber) : null,
     })
     .eq("id", booking.id);

@@ -56,6 +56,16 @@
     "confirmComplete": "Confirm complete & release payment",
     "marking": "Marking…",
     "markAsComplete": "Mark as complete",
+    "call": "Call",
+    "whatsapp": "WhatsApp",
+    "verifiedArtisan": "Verified artisan",
+    "pipeline": {
+      "requested": "Requested",
+      "accepted": "Accepted",
+      "in_progress": "In Progress",
+      "review": "Review & Release",
+      "completed": "Completed"
+    },
     "status": {
       "requested": "Awaiting response",
       "quoted": "Quote received",

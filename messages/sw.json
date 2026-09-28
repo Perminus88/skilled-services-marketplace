@@ -10,7 +10,7 @@
   },
   "artisanDashboard": {
     "title": "Dashibodi ya Fundi",
-    "brandLabel": "Soko la huduma za ufundi",
+    "brandLabel": "Huduma Connect",
     "yourStatus": "Hali yako",
     "available": "Nipo tayari",
     "busy": "Nina shughuli",
@@ -56,6 +56,16 @@
     "confirmComplete": "Thibitisha imekamilika na toa malipo",
     "marking": "Inaweka…",
     "markAsComplete": "Weka kama imekamilika",
+    "call": "Piga simu",
+    "whatsapp": "WhatsApp",
+    "verifiedArtisan": "Fundi aliyethibitishwa",
+    "pipeline": {
+      "requested": "Imeombwa",
+      "accepted": "Imekubaliwa",
+      "in_progress": "Inaendelea",
+      "review": "Kagua na Toa Malipo",
+      "completed": "Imekamilika"
+    },
     "status": {
       "requested": "Inasubiri jibu",
       "quoted": "Bei imepokelewa",

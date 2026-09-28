@@ -6,11 +6,16 @@ import type { User } from "@supabase/supabase-js";
 import { useTranslations } from "next-intl";
 import {
   Search, LogOut, User as UserIcon, Phone, Mail,
-  Loader2, AlertTriangle, ClipboardList, Briefcase,
-  CheckCircle2, Clock, Smartphone, Wrench,
+  Loader2, AlertTriangle, ClipboardList,
+  CheckCircle2, Clock, Smartphone, Wrench, MessageCircle, BadgeCheck,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import LanguageSwitcher from "@/app/_components/LanguageSwitcher";
+import {
+  getPipelineStage,
+  toInternationalPhone,
+  PIPELINE_STEP_COUNT,
+} from "@/lib/bookings/pipelineStage";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -31,6 +36,8 @@ interface BookingRow {
   created_at:                 string;
   artisan_id:                 string;
   artisanName:                string;
+  artisanPhone:               string | null;
+  artisanAvatarUrl:           string | null;
   client_marked_complete_at:  string | null;
   artisan_marked_complete_at: string | null;
   auto_release_at:            string | null;
@@ -65,6 +72,132 @@ function statusLabel(
   }
 }
 
+/** Horizontal 5-step progress tracker: Requested → Accepted → In Progress → Review & Release → Completed */
+function PipelineTracker({ stepIndex }: { stepIndex: number }) {
+  const t = useTranslations("clientDashboard");
+
+  const steps = [
+    t("pipeline.requested"),
+    t("pipeline.accepted"),
+    t("pipeline.in_progress"),
+    t("pipeline.review"),
+    t("pipeline.completed"),
+  ];
+
+  const lastIndex = steps.length - 1;
+
+  return (
+    <ol className="mt-4 flex items-start">
+      {steps.map((label, i) => {
+        const done    = i < stepIndex || stepIndex === lastIndex;
+        const current = i === stepIndex && stepIndex !== lastIndex;
+
+        return (
+          <li key={i} className="relative flex flex-1 flex-col items-center text-center">
+            {i > 0 && (
+              <span
+                className={`absolute left-[-50%] right-[50%] top-3 h-0.5 ${
+                  i <= stepIndex ? "bg-teal-500" : "bg-slate-200"
+                }`}
+              />
+            )}
+            <span
+              className={`relative z-10 flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ${
+                done
+                  ? "bg-teal-600 text-white"
+                  : current
+                  ? "bg-teal-600 text-white ring-4 ring-teal-100"
+                  : "bg-slate-200 text-slate-400"
+              }`}
+            >
+              {done ? <CheckCircle2 size={13} /> : i + 1}
+            </span>
+            <span
+              className={`mt-1.5 px-0.5 text-[10px] leading-tight ${
+                current
+                  ? "font-bold text-teal-700"
+                  : done
+                  ? "font-medium text-slate-600"
+                  : "text-slate-400"
+              }`}
+            >
+              {label}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/** Photo + verified badge + 1-tap Call / WhatsApp, shown once an artisan has committed to the job. */
+function ArtisanContactCard({
+  name,
+  phone,
+  avatarUrl,
+}: {
+  name:      string;
+  phone:     string | null;
+  avatarUrl: string | null;
+}) {
+  const t = useTranslations("clientDashboard");
+  const intl = phone ? toInternationalPhone(phone) : null;
+
+  const initials = name
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  return (
+    <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 p-3">
+      <div className="flex items-center gap-3">
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={avatarUrl}
+            alt={name}
+            className="h-11 w-11 flex-shrink-0 rounded-full object-cover ring-1 ring-slate-200"
+          />
+        ) : (
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-teal-50 text-sm font-bold text-teal-700">
+            {initials}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-1 truncate text-sm font-semibold text-slate-900">
+            <span className="truncate">{name}</span>
+            <BadgeCheck size={14} className="flex-shrink-0 text-teal-600" />
+          </p>
+          <p className="text-[11px] text-slate-500">{t("verifiedArtisan")}</p>
+        </div>
+      </div>
+
+      {intl && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <a
+            href={`tel:${intl}`}
+            className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+          >
+            <Phone size={13} />
+            {t("call")}
+          </a>
+          <a
+            href={`https://wa.me/${intl.replace("+", "")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1.5 rounded-lg bg-[#25D366] py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            <MessageCircle size={13} />
+            {t("whatsapp")}
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BookingCard({
   booking,
   onAcceptQuote,
@@ -90,6 +223,13 @@ function BookingCard({
   const { label, color } = statusLabel(booking.status, t);
   const [phone, setPhone] = useState(defaultPhone);
 
+  const stage = getPipelineStage(booking);
+  // Tracker only for in-flight bookings; completed/declined/cancelled/disputed
+  // keep the simple status badge so the history list stays compact.
+  const showTracker = stage != null && stage.stepIndex < PIPELINE_STEP_COUNT - 1;
+  // Contact card only once the artisan has actually committed (Accepted → Review).
+  const showContact = stage != null && stage.stepIndex >= 1 && stage.stepIndex <= 3;
+
   const needsPayment =
     booking.status === "confirmed" &&
     (booking.payment_status === "pending" || booking.payment_status === "failed");
@@ -109,7 +249,17 @@ function BookingCard({
         </span>
       </div>
 
-      <p className="mt-2.5 text-sm text-slate-600 leading-relaxed">{booking.description}</p>
+      {showTracker && stage && <PipelineTracker stepIndex={stage.stepIndex} />}
+
+      {showContact && (
+        <ArtisanContactCard
+          name={booking.artisanName}
+          phone={booking.artisanPhone}
+          avatarUrl={booking.artisanAvatarUrl}
+        />
+      )}
+
+      <p className="mt-3 text-sm text-slate-600 leading-relaxed">{booking.description}</p>
 
       {booking.quoted_price != null && (
         <p className="mt-2 text-sm font-bold text-slate-900">
@@ -214,7 +364,7 @@ type RawBooking = {
   description: string; scheduled_at: string | null; created_at: string; artisan_id: string;
   client_marked_complete_at: string | null; artisan_marked_complete_at: string | null;
   auto_release_at: string | null;
-  users: { full_name: string } | null;
+  users: { full_name: string | null; phone: string | null; avatar_url: string | null } | null;
 };
 
 function mapBookings(raw: RawBooking[]): BookingRow[] {
@@ -228,6 +378,8 @@ function mapBookings(raw: RawBooking[]): BookingRow[] {
     created_at:                 b.created_at,
     artisan_id:                 b.artisan_id,
     artisanName:                b.users?.full_name ?? "An artisan",
+    artisanPhone:               b.users?.phone ?? null,
+    artisanAvatarUrl:           b.users?.avatar_url ?? null,
     client_marked_complete_at:  b.client_marked_complete_at,
     artisan_marked_complete_at: b.artisan_marked_complete_at,
     auto_release_at:            b.auto_release_at,
@@ -517,7 +669,7 @@ export default function ClientDashboardPage() {
           <div className="flex items-center justify-between px-6 py-4 sm:px-8">
             <div className="flex items-center gap-3">
               <div className="flex h-8 w-8 select-none items-center justify-center rounded-md
-                              bg-slate-900 text-base font-black leading-none text-[#F5B700]">
+                              bg-slate-900 text-[#F5B700]">
                 <Wrench size={16} />
               </div>
               <div>
