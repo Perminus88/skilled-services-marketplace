@@ -8,8 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/admin/requireAdmin";
 import { triggerB2CPayout } from "@/lib/mpesa/b2c";
-
-const PLATFORM_COMMISSION_RATE = 0.12; // 12% — agreed rate, applied at payout time
+import { COMMISSION_RATE, computeCommission } from "@/lib/pricing";
 
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -74,7 +73,9 @@ export async function POST(
   }
 
   // ── 4. Compute the payout amount ──────────────────────────────────────────
-  const serviceFee   = Math.round(booking.quoted_price * PLATFORM_COMMISSION_RATE);
+  // Commission is 13% of the job price (T&Cs s.8). The KES 75 client booking
+  // fee is separate platform revenue and is not part of this calculation.
+  const serviceFee   = computeCommission(booking.quoted_price);
   const payoutAmount = booking.quoted_price - serviceFee;
 
   // ── 5. Trigger the real B2C payout ────────────────────────────────────────
@@ -109,7 +110,7 @@ export async function POST(
     .update({
       payout_status:                "pending",
       mpesa_payout_conversation_id: originatorConversationId,
-      commission_rate:              PLATFORM_COMMISSION_RATE,
+      commission_rate:              COMMISSION_RATE,
       service_fee:                  serviceFee,
     })
     .eq("id", bookingId);

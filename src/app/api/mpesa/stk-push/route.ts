@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { triggerStkPush } from "@/lib/mpesa/stkPush";
+import { CLIENT_BOOKING_FEE_KES, computeClientTotal } from "@/lib/pricing";
 
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -90,12 +91,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "This booking is missing a valid price." }, { status: 500 });
   }
 
-  // ── 5. Trigger the STK push ───────────────────────────────────────────────
+  // ── 5. Work out the total: job price + flat client booking fee (T&Cs s.8) ──
+  const bookingFee  = CLIENT_BOOKING_FEE_KES;
+  const totalAmount = computeClientTotal(booking.quoted_price);
+
+  // ── 6. Trigger the STK push ───────────────────────────────────────────────
   let stkResult;
   try {
     stkResult = await triggerStkPush({
       phone:            body.phone,
-      amount:           booking.quoted_price,
+      amount:           totalAmount,
       accountReference: `BK-${booking.id.slice(0, 8)}`,
       transactionDesc:  "Service payment",
     });
@@ -107,12 +112,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ── 6. Store the CheckoutRequestID so the callback route can match it back ──
+  // ── 7. Store the CheckoutRequestID (and the fee charged) on the booking ──
+  // The fee is saved per booking so it stays fixed if the constant ever
+  // changes, and so a future refund can tell what was non-refundable.
   const { error: updateError } = await supabase
     .from("bookings")
     .update({
       mpesa_checkout_request_id: stkResult.CheckoutRequestID,
       payment_status:            "pending", // reset in case this is a retry after a 'failed' attempt
+      client_booking_fee:        bookingFee,
     })
     .eq("id", body.bookingId);
 
@@ -132,6 +140,9 @@ export async function POST(req: NextRequest) {
     {
       message: "Payment request sent. Check your phone to complete it.",
       checkoutRequestId: stkResult.CheckoutRequestID,
+      jobPrice:    Math.round(booking.quoted_price),
+      bookingFee,
+      totalAmount,
     },
     { status: 200 }
   );

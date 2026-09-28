@@ -7,8 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/admin/requireAdmin";
-
-const PLATFORM_COMMISSION_RATE = 0.12;
+import { COMMISSION_RATE } from "@/lib/pricing";
 
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -68,7 +67,7 @@ export async function GET(req: NextRequest) {
     const isFinalized = b.payout_status === "completed";
     const commissionRate = isFinalized && b.commission_rate != null
       ? b.commission_rate
-      : PLATFORM_COMMISSION_RATE;
+      : COMMISSION_RATE;
     const serviceFee = isFinalized && b.service_fee != null
       ? b.service_fee
       : Math.round((b.quoted_price ?? 0) * commissionRate);
