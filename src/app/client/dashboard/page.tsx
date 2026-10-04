@@ -16,6 +16,7 @@ import {
   toInternationalPhone,
   PIPELINE_STEP_COUNT,
 } from "@/lib/bookings/pipelineStage";
+import { CLIENT_BOOKING_FEE_KES, computeClientTotal } from "@/lib/pricing";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -31,6 +32,7 @@ interface BookingRow {
   status:                     string;
   payment_status:             string;
   quoted_price:               number | null;
+  client_booking_fee:         number | null;
   description:                string;
   scheduled_at:               string | null;
   created_at:                 string;
@@ -198,6 +200,35 @@ function ArtisanContactCard({
   );
 }
 
+/**
+ * Price breakdown shown above the Pay Now button: job price + flat client
+ * booking fee (KES 75, T&Cs s.8) + total. Uses the shared pricing constant
+ * rather than booking.client_booking_fee, since that column is only
+ * populated once a payment attempt actually goes out — before that, a
+ * confirmed-but-unpaid booking would show a stale/zero fee otherwise.
+ */
+function PriceBreakdown({ jobPrice }: { jobPrice: number }) {
+  const t = useTranslations("clientDashboard");
+  const total = computeClientTotal(jobPrice);
+
+  return (
+    <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5 text-xs">
+      <div className="flex items-center justify-between text-slate-600">
+        <span>{t("jobPriceLabel")}</span>
+        <span className="font-medium">KES {Math.round(jobPrice).toLocaleString()}</span>
+      </div>
+      <div className="mt-1 flex items-center justify-between text-slate-600">
+        <span>{t("bookingFeeLabel")}</span>
+        <span className="font-medium">KES {CLIENT_BOOKING_FEE_KES.toLocaleString()}</span>
+      </div>
+      <div className="mt-1.5 flex items-center justify-between border-t border-slate-200 pt-1.5 font-bold text-slate-900">
+        <span>{t("totalToPayLabel")}</span>
+        <span>KES {total.toLocaleString()}</span>
+      </div>
+    </div>
+  );
+}
+
 function BookingCard({
   booking,
   onAcceptQuote,
@@ -233,6 +264,8 @@ function BookingCard({
   const needsPayment =
     booking.status === "confirmed" &&
     (booking.payment_status === "pending" || booking.payment_status === "failed");
+
+  const totalToPay = booking.quoted_price != null ? computeClientTotal(booking.quoted_price) : null;
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -286,6 +319,9 @@ function BookingCard({
               {t("lastAttemptFailed")}
             </p>
           )}
+
+          {booking.quoted_price != null && <PriceBreakdown jobPrice={booking.quoted_price} />}
+
           <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
             <Smartphone size={12} />
             {t("mpesaNumberLabel")}
@@ -306,7 +342,9 @@ function BookingCard({
                        text-xs font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
           >
             {isPaying ? <Loader2 size={13} className="animate-spin" /> : <Smartphone size={13} />}
-            {isPaying ? t("sendingRequest") : t("payNow", { price: booking.quoted_price?.toLocaleString() ?? "" })}
+            {isPaying
+              ? t("sendingRequest")
+              : t("payNow", { price: totalToPay?.toLocaleString() ?? "" })}
           </button>
         </div>
       )}
@@ -361,6 +399,7 @@ function BookingCard({
 
 type RawBooking = {
   id: string; status: string; payment_status: string; quoted_price: number | null;
+  client_booking_fee: number | null;
   description: string; scheduled_at: string | null; created_at: string; artisan_id: string;
   client_marked_complete_at: string | null; artisan_marked_complete_at: string | null;
   auto_release_at: string | null;
@@ -373,6 +412,7 @@ function mapBookings(raw: RawBooking[]): BookingRow[] {
     status:                     b.status,
     payment_status:             b.payment_status,
     quoted_price:               b.quoted_price,
+    client_booking_fee:         b.client_booking_fee,
     description:                b.description,
     scheduled_at:               b.scheduled_at,
     created_at:                 b.created_at,
@@ -491,7 +531,7 @@ export default function ClientDashboardPage() {
       if (!res.ok) throw new Error(json.message ?? "Something went wrong.");
 
       setBookings((prev) =>
-        prev.map((b) => (b.id === bookingId ? { ...b, status: "confirmed" } : b))
+        prev.map((b) => (b.id === bookingId ? { ...b, status: "confirmed", payment_status: "pending" } : b))
       );
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Something went wrong.");

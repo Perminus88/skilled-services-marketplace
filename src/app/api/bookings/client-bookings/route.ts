@@ -33,10 +33,14 @@ export async function GET(req: NextRequest) {
   // No FK constraint exists on bookings.artisan_id -> users, so an
   // embedded PostgREST join (users!bookings_artisan_id_fkey(...)) isn't
   // possible here. Fetch bookings and artisan details separately, merge in code.
+  //
+  // client_booking_fee is included so a completed booking's history shows
+  // what was actually charged at the time, rather than always recomputing
+  // it live from the current CLIENT_BOOKING_FEE_KES constant.
   const { data: bookings, error: bookingsError } = await supabase
     .from("bookings")
     .select(
-      "id, status, payment_status, quoted_price, description, scheduled_at, created_at, artisan_id, client_marked_complete_at, artisan_marked_complete_at, auto_release_at"
+      "id, status, payment_status, quoted_price, client_booking_fee, description, scheduled_at, created_at, artisan_id, client_marked_complete_at, artisan_marked_complete_at, auto_release_at"
     )
     .eq("client_id", clientId)
     .order("created_at", { ascending: false });
