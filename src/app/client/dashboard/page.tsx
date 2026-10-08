@@ -8,6 +8,7 @@ import {
   Search, LogOut, User as UserIcon, Phone, Mail,
   Loader2, AlertTriangle, ClipboardList,
   CheckCircle2, Clock, Smartphone, Wrench, MessageCircle, BadgeCheck,
+  ShieldCheck, Flag,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import LanguageSwitcher from "@/app/_components/LanguageSwitcher";
@@ -43,6 +44,7 @@ interface BookingRow {
   client_marked_complete_at:  string | null;
   artisan_marked_complete_at: string | null;
   auto_release_at:            string | null;
+  dispute_reason:             string | null;
 }
 
 type PageStatus = "loading" | "ready" | "error";
@@ -229,6 +231,98 @@ function PriceBreakdown({ jobPrice }: { jobPrice: number }) {
   );
 }
 
+/** "Payment secured in escrow" confirmation line — shown once payment is held and the booking is actively underway (not disputed/completed). */
+function EscrowSecuredNotice() {
+  const t = useTranslations("clientDashboard");
+  return (
+    <div className="mt-3 flex items-center gap-1.5 rounded-lg bg-teal-50 px-3 py-2 text-xs font-medium text-teal-700">
+      <ShieldCheck size={13} className="flex-shrink-0" />
+      {t("paymentSecuredInEscrow")}
+    </div>
+  );
+}
+
+/** Banner shown once a dispute has been filed — escrow is frozen, no further actions available on this booking. */
+function DisputedBanner({ reason }: { reason: string | null }) {
+  const t = useTranslations("clientDashboard");
+  return (
+    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3">
+      <p className="flex items-center gap-1.5 text-sm font-semibold text-red-700">
+        <Flag size={14} />
+        {t("disputedTitle")}
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-red-600">
+        {t("disputedBody")}
+      </p>
+      {reason && (
+        <p className="mt-2 rounded border border-red-100 bg-white px-2.5 py-2 text-xs text-slate-600">
+          <span className="font-semibold text-slate-700">{t("yourReportLabel")}: </span>
+          {reason}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Inline "Report an Issue" form — collapsed button that expands into a reason textarea + submit. */
+function ReportIssueControl({
+  bookingId,
+  onSubmit,
+  isSubmitting,
+}: {
+  bookingId:    string;
+  onSubmit:     (bookingId: string, reason: string) => void;
+  isSubmitting: boolean;
+}) {
+  const t = useTranslations("clientDashboard");
+  const [open, setOpen]     = useState(false);
+  const [reason, setReason] = useState("");
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-200 py-2 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
+      >
+        <Flag size={13} />
+        {t("reportIssue")}
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-2 space-y-2 rounded-lg border border-red-200 bg-red-50/50 p-3">
+      <label className="block text-[11px] font-semibold text-red-700">
+        {t("disputeReasonLabel")}
+      </label>
+      <textarea
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        rows={3}
+        placeholder={t("disputeReasonPlaceholder")}
+        className="w-full rounded-lg border border-red-200 bg-white px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-red-400 focus:outline-none"
+      />
+      <div className="flex gap-2">
+        <button
+          onClick={() => setOpen(false)}
+          disabled={isSubmitting}
+          className="flex-1 rounded-lg border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+        >
+          {t("cancel")}
+        </button>
+        <button
+          onClick={() => onSubmit(bookingId, reason.trim())}
+          disabled={isSubmitting || reason.trim().length < 10}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-red-600 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+        >
+          {isSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Flag size={13} />}
+          {isSubmitting ? t("disputeSubmitting") : t("disputeSubmit")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function BookingCard({
   booking,
   onAcceptQuote,
@@ -239,6 +333,8 @@ function BookingCard({
   isPendingPayment,
   onMarkComplete,
   isMarking,
+  onDispute,
+  isDisputing,
 }: {
   booking:          BookingRow;
   onAcceptQuote:    (bookingId: string) => void;
@@ -249,6 +345,8 @@ function BookingCard({
   isPendingPayment: boolean;
   onMarkComplete:   (bookingId: string) => void;
   isMarking:        boolean;
+  onDispute:        (bookingId: string, reason: string) => void;
+  isDisputing:      boolean;
 }) {
   const t = useTranslations("clientDashboard");
   const { label, color } = statusLabel(booking.status, t);
@@ -258,8 +356,10 @@ function BookingCard({
   // Tracker only for in-flight bookings; completed/declined/cancelled/disputed
   // keep the simple status badge so the history list stays compact.
   const showTracker = stage != null && stage.stepIndex < PIPELINE_STEP_COUNT - 1;
-  // Contact card only once the artisan has actually committed (Accepted → Review).
+  // Contact card + report-issue only once the artisan has actually
+  // committed and money is at stake (Accepted → Review).
   const showContact = stage != null && stage.stepIndex >= 1 && stage.stepIndex <= 3;
+  const canDispute  = booking.status === "in_progress" && booking.payment_status === "held";
 
   const needsPayment =
     booking.status === "confirmed" &&
@@ -284,6 +384,8 @@ function BookingCard({
 
       {showTracker && stage && <PipelineTracker stepIndex={stage.stepIndex} />}
 
+      {booking.status === "disputed" && <DisputedBanner reason={booking.dispute_reason} />}
+
       {showContact && (
         <ArtisanContactCard
           name={booking.artisanName}
@@ -291,6 +393,8 @@ function BookingCard({
           avatarUrl={booking.artisanAvatarUrl}
         />
       )}
+
+      {booking.status === "in_progress" && booking.payment_status === "held" && <EscrowSecuredNotice />}
 
       <p className="mt-3 text-sm text-slate-600 leading-relaxed">{booking.description}</p>
 
@@ -377,7 +481,7 @@ function BookingCard({
                              text-xs font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
                 >
                   {isMarking ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-                  {isMarking ? t("confirming") : t("confirmComplete")}
+                  {isMarking ? t("confirming") : t("approveAndRelease")}
                 </button>
               </>
             ) : (
@@ -388,8 +492,16 @@ function BookingCard({
                            text-xs font-semibold text-teal-700 hover:bg-teal-50 disabled:opacity-60"
               >
                 {isMarking ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-                {isMarking ? t("marking") : t("markAsComplete")}
+                {isMarking ? t("marking") : t("approveAndRelease")}
               </button>
+            )}
+
+            {canDispute && (
+              <ReportIssueControl
+                bookingId={booking.id}
+                onSubmit={onDispute}
+                isSubmitting={isDisputing}
+              />
             )}
           </div>
         )}
@@ -403,6 +515,7 @@ type RawBooking = {
   description: string; scheduled_at: string | null; created_at: string; artisan_id: string;
   client_marked_complete_at: string | null; artisan_marked_complete_at: string | null;
   auto_release_at: string | null;
+  dispute_reason: string | null;
   users: { full_name: string | null; phone: string | null; avatar_url: string | null } | null;
 };
 
@@ -423,6 +536,7 @@ function mapBookings(raw: RawBooking[]): BookingRow[] {
     client_marked_complete_at:  b.client_marked_complete_at,
     artisan_marked_complete_at: b.artisan_marked_complete_at,
     auto_release_at:            b.auto_release_at,
+    dispute_reason:             b.dispute_reason,
   }));
 }
 
@@ -450,6 +564,9 @@ export default function ClientDashboardPage() {
 
   const [markingBookingId, setMarkingBookingId] = useState<string | null>(null);
   const [markError,        setMarkError]        = useState<string>("");
+
+  const [disputingBookingId, setDisputingBookingId] = useState<string | null>(null);
+  const [disputeError,       setDisputeError]       = useState<string>("");
 
   async function loadDashboard() {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -658,6 +775,43 @@ export default function ClientDashboardPage() {
     }
   }
 
+  async function handleDispute(bookingId: string, reason: string) {
+    setDisputingBookingId(bookingId);
+    setDisputeError("");
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+    if (!accessToken) {
+      router.replace("/login");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/dispute`, {
+        method:  "POST",
+        headers: {
+          "Content-Type":  "application/json",
+          Authorization:   `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ reason }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.message ?? "Something went wrong.");
+
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === bookingId
+            ? { ...b, status: "disputed", dispute_reason: reason, auto_release_at: null }
+            : b
+        )
+      );
+    } catch (err) {
+      setDisputeError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setDisputingBookingId(null);
+    }
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut();
     router.push("/login");
@@ -814,6 +968,13 @@ export default function ClientDashboardPage() {
               </div>
             )}
 
+            {disputeError && (
+              <div className="mb-3 flex gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+                <AlertTriangle size={15} className="mt-0.5 flex-shrink-0 text-red-500" />
+                <p className="text-sm text-red-700">{disputeError}</p>
+              </div>
+            )}
+
             {bookings.length === 0 ? (
               <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed
                               border-slate-200 py-8 text-center">
@@ -837,6 +998,8 @@ export default function ClientDashboardPage() {
                     isPendingPayment={pendingPaymentIds.has(b.id)}
                     onMarkComplete={handleMarkComplete}
                     isMarking={markingBookingId === b.id}
+                    onDispute={handleDispute}
+                    isDisputing={disputingBookingId === b.id}
                   />
                 ))}
               </div>

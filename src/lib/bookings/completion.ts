@@ -9,11 +9,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 type SupabaseAdmin = SupabaseClient<any, any, any>;
 
 // Finalizes a single booking: marks it completed and releases payment.
+//
+// Scoped to status IN ('confirmed','in_progress') AND payment_status='held'
+// at write time — defense-in-depth against a race between a dispute being
+// filed and an in-flight finalize call. If the booking has already moved
+// to 'disputed' (or anything else) by the time this runs, the update
+// simply matches zero rows and this throws instead of silently pretending
+// success.
+//
 // NOTE: this does NOT trigger an actual B2C payout to the artisan — that's
 // a deliberately separate, later phase (manual for now). This just flips
 // the booking's own state to reflect that funds are ready to be paid out.
 export async function finalizeBooking(supabase: SupabaseAdmin, bookingId: string) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("bookings")
     .update({
       status:          "completed",
@@ -21,11 +29,26 @@ export async function finalizeBooking(supabase: SupabaseAdmin, bookingId: string
       completed_at:    new Date().toISOString(),
       auto_release_at: null,
     })
-    .eq("id", bookingId);
+    .eq("id", bookingId)
+    .in("status", ["confirmed", "in_progress"])
+    .eq("payment_status", "held")
+    .select("id");
 
   if (error) {
     console.error("BOOKING ERROR LOG: failed to finalize booking", bookingId, ":", error);
     throw error;
+  }
+
+  if (!data || data.length === 0) {
+    // Booking existed but didn't match the guard — most likely it was
+    // disputed (or already completed) between the caller's own status
+    // check and this write. Treat as a real failure so the caller's
+    // catch block surfaces a message rather than claiming success.
+    const notEligibleError = new Error(
+      `Booking ${bookingId} was no longer eligible for finalize (status/payment_status changed).`
+    );
+    console.error("BOOKING ERROR LOG:", notEligibleError.message);
+    throw notEligibleError;
   }
 }
 
