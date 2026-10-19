@@ -3,7 +3,7 @@
 // Client-only. "Report an Issue" — freezes escrow by moving the booking to
 // status = 'disputed'. This alone keeps it out of releaseOverdueBookings()
 // (which only touches 'confirmed'/'in_progress'), and finalizeBooking()
-// also now re-checks status itself as defense-in-depth against a race
+// also re-checks status itself as defense-in-depth against a race
 // between a dispute and an in-flight finalize call.
 //
 // Resolving the dispute (admin reviewing evidence, releasing or refunding)
@@ -24,6 +24,7 @@ interface DisputeBody {
 }
 
 const MIN_REASON_LENGTH = 10;
+const MAX_REASON_LENGTH = 1000;
 
 export async function POST(
   req: NextRequest,
@@ -65,6 +66,12 @@ export async function POST(
       { status: 422 }
     );
   }
+  if (reason.length > MAX_REASON_LENGTH) {
+    return NextResponse.json(
+      { message: `Please keep the description under ${MAX_REASON_LENGTH} characters.` },
+      { status: 422 }
+    );
+  }
 
   const { data: booking, error: bookingError } = await supabase
     .from("bookings")
@@ -99,7 +106,13 @@ export async function POST(
     );
   }
 
-  const { error: updateError } = await supabase
+  // Re-check BOTH status and payment_status at write time, and confirm a row
+  // was actually changed. Without the row check, a dispute that races a
+  // release (client confirm, or auto-release) would match zero rows, raise
+  // no error, and tell the client "Dispute filed" while the funds were
+  // already released. finalizeBooking() throws in the mirror-image case;
+  // this route should behave the same way.
+  const { data: updated, error: updateError } = await supabase
     .from("bookings")
     .update({
       status:          "disputed",
@@ -108,11 +121,24 @@ export async function POST(
       auto_release_at: null, // stop any pending 48h auto-release window
     })
     .eq("id", bookingId)
-    .in("status", ["confirmed", "in_progress"]); // re-check at write time too
+    .in("status", ["confirmed", "in_progress"])
+    .eq("payment_status", "held")
+    .select("id");
 
   if (updateError) {
     console.error("BOOKING ERROR LOG: dispute update failed:", updateError);
     return NextResponse.json({ message: "Failed to file dispute." }, { status: 500 });
+  }
+
+  if (!updated || updated.length === 0) {
+    console.error(
+      "BOOKING ERROR LOG: dispute matched zero rows (booking changed between check and write):",
+      bookingId
+    );
+    return NextResponse.json(
+      { message: "This booking changed before your report could be filed. Please refresh and check its status." },
+      { status: 409 }
+    );
   }
 
   return NextResponse.json(
