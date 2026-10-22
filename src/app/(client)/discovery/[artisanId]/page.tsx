@@ -8,10 +8,6 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
-
 interface ArtisanDetail {
   userId:          string;
   fullName:        string;
@@ -31,20 +27,12 @@ type BookingStatus = "idle" | "submitting" | "success" | "error";
 
 const FALLBACK_COORDS = { latitude: -1.0467, longitude: 37.15 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
 function formatPricingType(type: string | null): string {
   if (type === "flat") return "Flat rate";
   if (type === "custom_quote") return "Custom quote";
   if (type === "both") return "Flat rate + quotes";
   return "";
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Page
-// ─────────────────────────────────────────────────────────────────────────────
 
 export default function ArtisanDetailPage() {
   const params = useParams<{ artisanId: string }>();
@@ -91,9 +79,11 @@ export default function ArtisanDetailPage() {
     setBookingStatus("submitting");
     setBookingError("");
 
-    // Step 1 — confirm the client is actually logged in
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    // Step 1 — confirm the client is actually logged in, and get their
+    // access token. The booking route verifies this token server-side
+    // instead of trusting a clientId sent in the body (security fix).
+    const { data: { session }, error: authError } = await supabase.auth.getSession();
+    if (authError || !session) {
       router.push("/login");
       return;
     }
@@ -115,9 +105,11 @@ export default function ArtisanDetailPage() {
     try {
       const res = await fetch("/api/bookings/create", {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type":  "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
-          clientId:    user.id,
           artisanId:   artisan.userId,
           categoryId:  artisan.categoryId,
           description: description.trim(),
@@ -140,7 +132,6 @@ export default function ArtisanDetailPage() {
     }
   }
 
-  // ── Loading / error / not-found states ────────────────────────────────────
   if (pageStatus === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
@@ -184,7 +175,6 @@ export default function ArtisanDetailPage() {
           <ArrowLeft size={14} /> Back to discovery
         </a>
 
-        {/* Profile card */}
         <div
           className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-900/5"
           style={{ borderTop: "4px solid #0D9488" }}
@@ -237,7 +227,6 @@ export default function ArtisanDetailPage() {
           </div>
         </div>
 
-        {/* Booking form / result */}
         <div
           className="mt-4 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-900/5"
           style={{ borderTop: "4px solid #0D9488" }}

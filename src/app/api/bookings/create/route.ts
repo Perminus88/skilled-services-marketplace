@@ -16,12 +16,7 @@ function getSupabaseAdmin() {
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
-
 interface CreateBookingBody {
-  clientId:    string;
   artisanId:   string;
   categoryId:  number;
   description: string;
@@ -30,20 +25,11 @@ interface CreateBookingBody {
   longitude:   number;
 }
 
-// Bookings in these states represent an active, unresolved engagement
-// between a specific client and artisan — used both to block duplicate
-// requests and (later) to check for scheduling conflicts.
 const ACTIVE_BOOKING_STATUSES = ["requested", "quoted", "confirmed", "in_progress"];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Validation
-// ─────────────────────────────────────────────────────────────────────────────
 
 function validateBody(body: Partial<CreateBookingBody>): string[] {
   const errs: string[] = [];
 
-  if (!body.clientId || typeof body.clientId !== "string")
-    errs.push("clientId is required.");
   if (!body.artisanId || typeof body.artisanId !== "string")
     errs.push("artisanId is required.");
   if (!body.categoryId || typeof body.categoryId !== "number")
@@ -61,13 +47,29 @@ function validateBody(body: Partial<CreateBookingBody>): string[] {
   return errs;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Route handler
-// ─────────────────────────────────────────────────────────────────────────────
-
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  let body: Partial<CreateBookingBody>;
+  const authHeader = req.headers.get("authorization");
+  const accessToken = authHeader?.replace("Bearer ", "");
 
+  if (!accessToken) {
+    return NextResponse.json({ message: "Not authenticated." }, { status: 401 });
+  }
+
+  let supabase: ReturnType<typeof getSupabaseAdmin>;
+  try {
+    supabase = getSupabaseAdmin();
+  } catch (initError) {
+    console.error("SUPABASE ERROR LOG: Failed to initialise Supabase client:", initError);
+    return NextResponse.json({ message: "Server configuration error." }, { status: 500 });
+  }
+
+  const { data: authResult, error: authError } = await supabase.auth.getUser(accessToken);
+  if (authError || !authResult.user) {
+    return NextResponse.json({ message: "Invalid or expired session." }, { status: 401 });
+  }
+  const clientId = authResult.user.id;
+
+  let body: Partial<CreateBookingBody>;
   try {
     body = (await req.json()) as Partial<CreateBookingBody>;
   } catch {
@@ -84,19 +86,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const data = body as CreateBookingBody;
 
-  let supabase: ReturnType<typeof getSupabaseAdmin>;
-  try {
-    supabase = getSupabaseAdmin();
-  } catch (initError) {
-    console.error("SUPABASE ERROR LOG: Failed to initialise Supabase client:", initError);
-    return NextResponse.json({ message: "Server configuration error." }, { status: 500 });
-  }
-
-  // ── 1. Confirm the client is real and actually a client ──────────────────
   const { data: clientRow, error: clientError } = await supabase
     .from("users")
     .select("role")
-    .eq("id", data.clientId)
+    .eq("id", clientId)
     .maybeSingle();
 
   if (clientError) {
@@ -107,7 +100,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ message: "Invalid client account." }, { status: 422 });
   }
 
-  // ── 2. Confirm the artisan is real, verified, and fetch pricing + availability ──
   const { data: artisanUser, error: artisanUserError } = await supabase
     .from("users")
     .select("role, verification_status")
@@ -136,10 +128,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ message: "Failed to load artisan pricing." }, { status: 500 });
   }
 
-  // 'offline' means not taking work right now — block outright.
-  // 'busy' still allows a request through; the artisan can decide whether
-  // to accept it, since "busy today" doesn't necessarily mean "unwilling
-  // to be asked about a later job."
   if (artisanProfile.availability === "offline") {
     return NextResponse.json(
       { message: "This artisan isn't accepting bookings right now." },
@@ -147,11 +135,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // ── 3. Block duplicate active requests between this client + artisan ─────
   const { data: existingActive, error: existingError } = await supabase
     .from("bookings")
     .select("id")
-    .eq("client_id", data.clientId)
+    .eq("client_id", clientId)
     .eq("artisan_id", data.artisanId)
     .in("status", ACTIVE_BOOKING_STATUSES)
     .maybeSingle();
@@ -167,17 +154,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // ── 4. Determine starting quoted_price ────────────────────────────────────
   const quotedPrice = artisanProfile.pricing_type === "flat" ? artisanProfile.starting_price : null;
 
-  // ── 5. Build booking location as WKT, same pattern as artisan_profiles ───
   const clientLocationWKT = `SRID=4326;POINT(${data.longitude} ${data.latitude})`;
 
-  // ── 6. Insert the booking ──────────────────────────────────────────────
   const { data: booking, error: insertError } = await supabase
     .from("bookings")
     .insert({
-      client_id:      data.clientId,
+      client_id:      clientId,
       artisan_id:     data.artisanId,
       category_id:    data.categoryId,
       description:    data.description.trim(),
